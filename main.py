@@ -35,6 +35,18 @@ def button_clicked_train_model():
 
     start_time = time.time()
 
+    directories = os.listdir("raw_images")
+    already_existing_classes = ui.yolo_handler.get_classes()
+    missing_classes = []
+
+    for directory in directories:
+        if directory not in already_existing_classes:
+            print(f"Adding class: {directory}")
+            missing_classes.append(directory)
+
+    print(f"Missing classes: {missing_classes}")
+
+    """
     # TODO: make this automatic
     new_class_dirs = {
         "happy face": "raw_images/happy_face",
@@ -62,7 +74,7 @@ def button_clicked_train_model():
         batch_size=16,
         img_size=640
     )
-    print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
+    print(f"Model training completed in {time.time() - start_time:.2f} seconds.")"""
 
 def button_clicked_quit():
     print("Button Quit!")
@@ -78,7 +90,8 @@ if __name__ == "__main__":
     #calibration = ManualBoardCalibration()
     #points = calibration.run()
     points = [(0, 0), (640, 0), (640, 480), (0, 480)]
+    enable_spotify = False
 
-    ui = UI(points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
+    ui = UI(points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
     pygame.scrap.init()
     ui.run()

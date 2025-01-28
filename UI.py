@@ -15,7 +15,7 @@ from utils.yolo_handler import YOLOHandler
 
 
 class UI:
-    def __init__(self, points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
+    def __init__(self, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
         self.screen = pygame.display.set_mode((1024, 600))
         pygame.display.set_caption("UI TEST")
         self.clock = pygame.time.Clock()
@@ -115,7 +115,10 @@ class UI:
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
 
-        self.spotify_manager = Spotify_Manager()
+        # variable to check if i should activate it
+        self.enable_spotify = enable_spotify
+        if self.enable_spotify:
+            self.spotify_manager = Spotify_Manager()
 
     def reload_YOLO_model(self, custom = True):
         if custom:
@@ -245,7 +248,7 @@ class UI:
 
             """SPOTIFY"""
             # Process the queue every 5 seconds
-            if time.time() - queue_timer >= 3.0:  # Check every 5 seconds
+            if time.time() - queue_timer >= 3.0 and self.enable_spotify:  # Check every 5 seconds
                 print("Checking queue...", self.queue)
                 self.queue = self.spotify_manager.continue_queue(self.queue)
                 queue_timer = time.time()
