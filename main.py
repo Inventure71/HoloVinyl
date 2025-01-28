@@ -8,7 +8,7 @@ from UI import UI
 from utils.database_handler_V3 import create_or_update_yolo_dataset
 from utils.string_utils import unsanitize_string, sanitize_string
 
-#TODO: add sanitization of strings, removing spaces ecc
+#TODO: added sanitization of strings, removing spaces ecc. Check if it works
 
 """BUTTONS START"""
 def button_clicked_start_prediction():
