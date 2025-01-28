@@ -1,29 +1,61 @@
+import os
 import time
 
+import cv2
+import pygame
+
+from UI import UI
 from utils.database_handler_V3 import create_or_update_yolo_dataset
-from utils.yolo_handler import YOLOHandler
 
+"""BUTTONS START"""
+def button_clicked_start_prediction():
+    print("Button Start Prediction!")
+    ui.predicting = not ui.predicting
 
-if __name__ == "__main__":
-    # Initialize the YOLO handler (load a pretrained model or start fresh)
-    yolo_handler = YOLOHandler(model_path="yolo11n.pt")  # Pretrained YOLOv8 model
+def button_clicked_add_class():
+    # just add to dataset
+    print("Button Add Class!")
+    ui.remaining_photo_count = 5
+    ui.adding_class = ui.text_field.text
+
+def button_clicked_take_photo(frame):
+    print("Button Took Picture!")
+    os.makedirs(f"raw_images/{ui.adding_class}", exist_ok=True)
+
+    if ui.remaining_photo_count > 0:
+        ui.remaining_photo_count -= 1
+        cv2.imwrite(f"raw_images/{ui.adding_class}/img_{len(os.listdir(f'raw_images/{ui.adding_class}'))}.png", frame)
+
+    if ui.remaining_photo_count <= 0:
+        ui.adding_class = ""
+        print("Finished adding class!")
+
+def button_clicked_train_model():
+    print("Button Train!")
 
     start_time = time.time()
-    class_dirs = {
-        "postit": "raw_images/postit",
-        "pen": "raw_images/pen"
+
+    # TODO: make this automatic
+    new_class_dirs = {
+        "happy face": "raw_images/happy_face",
+        "plane": "raw_images/plane"
+    }
+    new_class_dirs = {
+        "amongus": "raw_images/amongus",
     }
 
     create_or_update_yolo_dataset(
-        class_directories=class_dirs,
+        class_directories=new_class_dirs,
         output_directory="yolo_dataset",
-        target_samples_per_class=70
+        target_samples_per_class=70,
+        existing_dataset="yolo_dataset"
     )
+
     print(f"Dataset creation completed in {time.time() - start_time:.2f} seconds.")
     start_time = time.time()
 
     # Train on a custom dataset
-    yolo_handler.train_model(
+    ui.yolo_handler.train_model(
         data_path="yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
         epochs=50,
@@ -31,25 +63,22 @@ if __name__ == "__main__":
         img_size=640
     )
     print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
-    
-    # Export to ONNX format for deployment
-    #yolo_handler.export_model(format="onnx")
-    #print("Model training completed.")
 
-    """
-    # Load a retrained model
-    yolo_handler.load_model(model_path="runs/detect/train/weights/best.pt")
+def button_clicked_quit():
+    print("Button Quit!")
+    ui.running = False
 
-    # Perform predictions on an image or folder of images
-    results = yolo_handler.predict(
-        source="raw_images/img.png", #path/to/image_or_folder
-        conf_threshold=0.5,
-        save=True,
-        save_dir="./runs/predict"
-    )
-
-    # Evaluate on validation dataset
-    #metrics = yolo_handler.evaluate_model(data_path="yolo_dataset/dataset.yaml")"""
+def button_clicked_open_submenu():
+    ui.submenu.active = True
+"""BUTTONS END"""
 
 
+if __name__ == "__main__":
+    pygame.init()
+    #calibration = ManualBoardCalibration()
+    #points = calibration.run()
+    points = [(0, 0), (640, 0), (640, 480), (0, 480)]
 
+    ui = UI(points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_take_photo, button_clicked_train_model, button_clicked_quit, button_clicked_open_submenu)
+    pygame.scrap.init()
+    ui.run()
