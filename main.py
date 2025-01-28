@@ -7,6 +7,8 @@ import pygame
 from UI import UI
 from utils.database_handler_V3 import create_or_update_yolo_dataset
 
+#TODO: add sanitization of strings, removing spaces ecc
+
 """BUTTONS START"""
 def button_clicked_start_prediction():
     print("Button Start Prediction!")
@@ -37,27 +39,22 @@ def button_clicked_train_model():
 
     directories = os.listdir("raw_images")
     already_existing_classes = ui.yolo_handler.get_classes()
-    missing_classes = []
+    new_classes_dirs = {}
 
     for directory in directories:
         if directory not in already_existing_classes:
             print(f"Adding class: {directory}")
-            missing_classes.append(directory)
+            new_classes_dirs[directory] = f"raw_images/{directory}"
 
-    print(f"Missing classes: {missing_classes}")
+    print(f"Missing classes: {new_classes_dirs}")
 
-    """
-    # TODO: make this automatic
-    new_class_dirs = {
-        "happy face": "raw_images/happy_face",
-        "plane": "raw_images/plane"
-    }
-    new_class_dirs = {
-        "amongus": "raw_images/amongus",
-    }
+        #new_class_dirs = {
+    #    "happy face": "raw_images/happy_face",
+    #    "plane": "raw_images/plane"
+    #}
 
     create_or_update_yolo_dataset(
-        class_directories=new_class_dirs,
+        class_directories=new_classes_dirs,
         output_directory="yolo_dataset",
         target_samples_per_class=70,
         existing_dataset="yolo_dataset"
@@ -74,7 +71,7 @@ def button_clicked_train_model():
         batch_size=16,
         img_size=640
     )
-    print(f"Model training completed in {time.time() - start_time:.2f} seconds.")"""
+    print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
 
 def button_clicked_quit():
     print("Button Quit!")
