@@ -36,13 +36,18 @@ class YOLOHandler:
         )
         print(f"Training completed. Results saved in: {save_dir}")
 
-    def load_model(self, model_path: str):
+    def load_model(self, model_path: str, fallback="yolo11n.pt"):
         """
         Load an already trained YOLO model.
         :param model_path: Path to the model file (e.g., best.pt).
         """
-        self.model = YOLO(model_path)
-        print(f"Model loaded from: {model_path}")
+        try:
+            self.model = YOLO(model_path)
+            print(f"Model loaded from: {model_path}")
+        except FileNotFoundError:
+            print(f"Model file not found: {model_path}")
+            self.model = YOLO(fallback)
+
 
     def get_classes(self) -> List[str]:
         """
@@ -56,7 +61,9 @@ class YOLOHandler:
         if hasattr(self.model, 'names'):
             return list(self.model.names.values())
         else:
-            raise AttributeError("The loaded model does not contain class names.")
+            print("No class names found in the model.")
+            return []
+            #raise AttributeError("The loaded model does not contain class names.")
 
     def predict(self, source: Union[str, List[str]], conf_threshold: float = 0.5, save: bool = False,
                 save_dir: str = "./runs/predict"):

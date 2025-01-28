@@ -58,8 +58,8 @@ def button_clicked_train_model():
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
-        target_samples_per_class=70,
-        existing_dataset="custom_models/yolo_dataset"
+        target_samples_per_class=50,
+        #existing_dataset="custom_models/yolo_dataset"
     )
 
     print(f"Dataset creation completed in {time.time() - start_time:.2f} seconds.")
@@ -71,7 +71,8 @@ def button_clicked_train_model():
         model_type="yolo11n.pt",  # Small model
         epochs=50,
         batch_size=16,
-        img_size=640
+        img_size=600,
+        save_dir="custom_models/runs/train"
     )
     print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
 
