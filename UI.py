@@ -137,8 +137,13 @@ class UI:
             self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
             if self.class_frame_count[cls] >= self.threshold_frames and cls not in self.queue:
                 # Add to queue if seen for N frames
-                self.queue.append(self.mappings.get(cls, ''))
-                print(f"Added to queue: {self.mappings.get(cls, '')}")
+                item = self.mappings.get(cls, '')
+                if item != '' and item not in self.queue:
+                    self.queue.append(item)
+                    print(f"Added to queue: {item}")
+                else:
+                    print("Class empty so skipping OR already in queue")
+
 
         # Remove classes not detected in this frame
         for cls in list(self.class_frame_count.keys()):
@@ -240,8 +245,9 @@ class UI:
 
             """SPOTIFY"""
             # Process the queue every 5 seconds
-            if time.time() - queue_timer >= 2.0:  # Check every 5 seconds
-                self.spotify_manager.continue_queue(self.queue)
+            if time.time() - queue_timer >= 3.0:  # Check every 5 seconds
+                print("Checking queue...", self.queue)
+                self.queue = self.spotify_manager.continue_queue(self.queue)
                 queue_timer = time.time()
 
             self.clock.tick(60)

@@ -107,20 +107,25 @@ class Spotify_Manager:
         return local_queue
 
     def continue_queue(self, queue):
-        local_queue = queue
 
         if self.currently_playing_url == "":
             print("No current song, playlist ecc. Playing")
             print("Skipping...")
-            self.find_first_non_empty(local_queue)
+            local_queue = self.find_first_non_empty(queue)
 
-        elif self.currently_playing_url != self.spotify_client.current_playback():
+        elif not (str(self.spotify_client.current_playback().get('context', {}).get('external_urls', {}).get('spotify', None)) in self.currently_playing_url):
             print("Current song is not the same as the one in the queue. Playing")
             print("Skipping...")
-            self.find_first_non_empty(local_queue)
+            local_queue = self.find_first_non_empty(queue)
 
         else:
+            local_queue = queue
             print("Nothing to do, waiting for the song to finish")
+
+        print("NOW PLAYING URL:", self.currently_playing_url)
+        print("NOW PLAYING:", self.spotify_client.current_playback().get('context', {}).get('external_urls', {}).get('spotify', None))
+
+        return local_queue
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()
