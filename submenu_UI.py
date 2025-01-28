@@ -1,28 +1,19 @@
 import json
 import os
 
+from utils.generic import save_mappings, load_mappings
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 
 # File to save mappings
 MAPPING_FILE = "variables/class_mappings.json"
 
-def load_mappings():
-    if os.path.exists(MAPPING_FILE):
-        with open(MAPPING_FILE, "r") as f:
-            return json.load(f)
-    return {}
-
-def save_mappings(mappings):
-    with open(MAPPING_FILE, "w") as f:
-        json.dump(mappings, f, indent=4)
-
 class Submenu:
     def __init__(self, screen, font, yolo_handler):
         self.screen = screen
         self.font = font
         self.yolo_handler = yolo_handler
-        self.mappings = load_mappings()
+        self.mappings = load_mappings(MAPPING_FILE)
         self.classes = self.yolo_handler.get_classes()
         self.text_fields = []
         self.buttons = []
@@ -51,7 +42,7 @@ class Submenu:
     def save_mappings(self):
         for class_name, text_field in self.text_fields:
             self.mappings[class_name] = text_field.text
-        save_mappings(self.mappings)
+        save_mappings(self.mappings, MAPPING_FILE)
         self.active = False
         print("Mappings saved successfully!")
 
