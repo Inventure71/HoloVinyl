@@ -7,6 +7,7 @@ import pygame
 
 from pygame_utils.Button import Button
 from pygame_utils.TextField import TextField
+from submenu_UI import Submenu
 from utils.board_calibration import ManualBoardCalibration
 
 from utils.database_handler_V3 import create_or_update_yolo_dataset
@@ -74,6 +75,8 @@ def button_clicked_quit():
     print("Button Quit!")
     ui.running = False
 
+def button_clicked_open_submenu():
+    ui.submenu.active = True
 
 class UI:
     def __init__(self, points):
@@ -132,8 +135,12 @@ class UI:
                 callback=button_clicked_train_model,
             ),
             Button(
+                x=1024 - 150, y=360, width=150, height=50, text="Class Mappings", font=self.font,
+                text_color=(255, 255, 255), button_color=(0, 128, 255), hover_color=(0, 102, 204),
+                callback=button_clicked_open_submenu),
+            Button(
                 x=1024-150,
-                y=360,
+                y=440,
                 width=150,
                 height=50,
                 text="Quit",
@@ -164,6 +171,9 @@ class UI:
 
         self.yolo_handler = YOLOHandler(model_path="yolo11n.pt")
         self.reload_YOLO_model()
+
+        self.submenu = Submenu(self.screen, self.font, self.yolo_handler)
+
 
 
     def reload_YOLO_model(self, custom = True):
@@ -213,13 +223,17 @@ class UI:
                 if event.type == pygame.QUIT:
                     self.running = False
 
-                for button in self.buttons:
-                    button.handle_event(event)
+                if self.submenu.active:
+                    self.submenu.handle_event(event)
 
-                if self.adding_class != "":
-                    self.button_to_take_picture.handle_event(event)
+                else:
+                    for button in self.buttons:
+                        button.handle_event(event)
 
-                self.text_field.handle_event(event)
+                    if self.adding_class != "":
+                        self.button_to_take_picture.handle_event(event)
+
+                    self.text_field.handle_event(event)
 
             ret, frame = self.webcam.read()
             frame = transform_to_square(frame, self.calibration_points)
@@ -245,14 +259,19 @@ class UI:
             else:
                 self.display_frame(frame)
 
-            for button in self.buttons:
-                button.draw(self.screen)
+            if self.submenu.active:
+                self.submenu.draw()
 
-            # Update the text field
-            self.text_field.update()
 
-            # Draw the text field
-            self.text_field.draw(self.screen)
+            else:
+                for button in self.buttons:
+                    button.draw(self.screen)
+
+                # Update the text field
+                self.text_field.update()
+
+                # Draw the text field
+                self.text_field.draw(self.screen)
 
             self.clock.tick(60)
             pygame.display.flip()
@@ -263,7 +282,10 @@ class UI:
 
 if __name__ == "__main__":
     pygame.init()
-    calibration = ManualBoardCalibration()
-    points = calibration.run()
+    #calibration = ManualBoardCalibration()
+    #points = calibration.run()
+    points = [(0, 0), (640, 0), (640, 480), (0, 480)]
+
     ui = UI(points)
+    pygame.scrap.init()
     ui.run()

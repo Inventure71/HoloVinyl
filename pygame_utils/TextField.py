@@ -37,15 +37,30 @@ class TextField:
             self.active = self.rect.collidepoint(event.pos)
 
         if event.type == pygame.KEYDOWN and self.active:
-            if event.key == pygame.K_BACKSPACE:
-                # Remove the last character
-                self.text = self.text[:-1]
-            elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
-                # Handle 'Enter' key press (you can define behavior for it here)
-                self.active = False
+            # Handle copy-paste functionality
+            mods = pygame.key.get_mods()
+            if mods & pygame.KMOD_CTRL:
+                if event.key == pygame.K_c:  # Copy
+                    pygame.scrap.put(pygame.SCRAP_TEXT, self.text.encode('utf-8'))
+                    print(f"Copied to clipboard: {self.text}")
+                elif event.key == pygame.K_v:  # Paste
+                    clipboard_text = pygame.scrap.get(pygame.SCRAP_TEXT)
+                    if clipboard_text:
+                        # Decode clipboard text, remove null characters, and append
+                        sanitized_text = clipboard_text.decode('utf-8').replace('\x00', '')
+                        self.text += sanitized_text
+                        print(f"Pasted from clipboard: {sanitized_text}")
             else:
-                # Add the pressed key to the text (if valid)
-                self.text += event.unicode
+                # Handle other key inputs
+                if event.key == pygame.K_BACKSPACE:
+                    # Remove the last character
+                    self.text = self.text[:-1]
+                elif event.key == pygame.K_RETURN or event.key == pygame.K_KP_ENTER:
+                    # Handle 'Enter' key press (you can define behavior for it here)
+                    self.active = False
+                else:
+                    # Add the pressed key to the text (if valid)
+                    self.text += event.unicode
 
     def update(self):
         """
