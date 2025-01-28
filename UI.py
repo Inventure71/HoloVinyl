@@ -134,8 +134,8 @@ class UI:
             self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
             if self.class_frame_count[cls] >= self.threshold_frames and cls not in self.queue:
                 # Add to queue if seen for N frames
-                self.queue.append(self.mappings.get(cls, cls))
-                print(f"Added to queue: {self.mappings.get(cls, cls)}")
+                self.queue.append(self.mappings.get(cls, ''))
+                print(f"Added to queue: {self.mappings.get(cls, '')}")
 
         # Remove classes not detected in this frame
         for cls in list(self.class_frame_count.keys()):
@@ -143,9 +143,9 @@ class UI:
                 self.class_frame_count[cls] -= 1
                 if self.class_frame_count[cls] <= 0 and self.mappings.get(cls, cls) in self.queue:
                     # Remove from queue when not seen anymore
-                    self.queue.remove(self.mappings.get(cls, cls))
+                    self.queue.remove(self.mappings.get(cls, ''))
                     del self.class_frame_count[cls]
-                    print(f"Removed from queue: {self.mappings.get(cls, cls)}")
+                    print(f"Removed from queue: {self.mappings.get(cls, '')}")
 
     def process_frame(self, frame):
         """
