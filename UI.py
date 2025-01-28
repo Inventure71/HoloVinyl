@@ -102,17 +102,17 @@ class UI:
         self.text_field = TextField(0, 500, 400, 50, self.font, text_color=(0, 0, 0), bg_color=(255, 255, 255), border_color=(0, 0, 0))
 
 
-        self.yolo_handler = YOLOHandler(model_path="models/yolo11n.pt")
+        self.yolo_handler = YOLOHandler(model_path="yolo11n.pt")
         self.reload_YOLO_model()
 
         self.submenu = Submenu(self.screen, self.font, self.yolo_handler)
 
     def reload_YOLO_model(self, custom = True):
         if custom:
-            self.yolo_handler.load_model(model_path="models/runs/detect/train3/weights/best.pt")
+            self.yolo_handler.load_model(model_path="runs/detect/train3/weights/best.pt")
 
         else:
-            self.yolo_handler.load_model(model_path="models/yolo11n.pt")
+            self.yolo_handler.load_model(model_path="yolo11n.pt")
 
     def display_frame(self, frame):
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -127,7 +127,7 @@ class UI:
         :param frame: The current video frame.
         """
         # Get predictions for the frame
-        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="./models/runs/predict")
+        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="runs/predict")
 
         try:
             self.display_frame(frame)

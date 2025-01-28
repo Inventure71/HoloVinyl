@@ -5,7 +5,7 @@ from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 
 # File to save mappings
-MAPPING_FILE = "class_mappings.json"
+MAPPING_FILE = "variables/class_mappings.json"
 
 def load_mappings():
     if os.path.exists(MAPPING_FILE):
@@ -52,6 +52,7 @@ class Submenu:
         for class_name, text_field in self.text_fields:
             self.mappings[class_name] = text_field.text
         save_mappings(self.mappings)
+        self.active = False
         print("Mappings saved successfully!")
 
     def draw(self):

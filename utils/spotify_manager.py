@@ -1,5 +1,7 @@
 import os
 import json
+import time
+
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -12,7 +14,9 @@ class Spotify_Manager:
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
         # File to store user's token
-        self.TOKEN_FILE = "spotify_token.json"
+        self.TOKEN_FILE = "../variables/spotify_token.json"
+
+        self.last_url = ""
 
         self.spotify_client = self.authenticate_user()
 
@@ -37,6 +41,7 @@ class Spotify_Manager:
         return spotipy.Spotify(auth=token_info["access_token"])
 
     def play_playlist_or_album(self, url):
+        self.last_url = url
         try:
             # Determine if the URL is a playlist or album
             if "playlist" in url:
@@ -70,6 +75,15 @@ class Spotify_Manager:
 
         except spotipy.exceptions.SpotifyException as e:
             print(f"Spotify API error: {e}")
+            if "The access token expired" in str(e):
+                print("Token expired. Please re-authenticate.")
+                os.remove(self.TOKEN_FILE)
+                time.sleep(0.5)
+                # Retry authentication
+                self.authenticate_user()
+                # Retry playing the playlist or album
+                self.play_playlist_or_album(self.last_url)
+
         except Exception as e:
             print(f"Error: {e}")
 

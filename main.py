@@ -20,11 +20,11 @@ def button_clicked_add_class():
 
 def button_clicked_take_photo(frame):
     print("Button Took Picture!")
-    os.makedirs(f"models/raw_images/{ui.adding_class}", exist_ok=True)
+    os.makedirs(f"raw_images/{ui.adding_class}", exist_ok=True)
 
     if ui.remaining_photo_count > 0:
         ui.remaining_photo_count -= 1
-        cv2.imwrite(f"models/raw_images/{ui.adding_class}/img_{len(os.listdir(f'models/raw_images/{ui.adding_class}'))}.png", frame)
+        cv2.imwrite(f"raw_images/{ui.adding_class}/img_{len(os.listdir(f'raw_images/{ui.adding_class}'))}.png", frame)
 
     if ui.remaining_photo_count <= 0:
         ui.adding_class = ""
@@ -37,18 +37,18 @@ def button_clicked_train_model():
 
     # TODO: make this automatic
     new_class_dirs = {
-        "happy face": "models/raw_images/happy_face",
-        "plane": "models/raw_images/plane"
+        "happy face": "raw_images/happy_face",
+        "plane": "raw_images/plane"
     }
     new_class_dirs = {
-        "amongus": "models/raw_images/amongus",
+        "amongus": "raw_images/amongus",
     }
 
     create_or_update_yolo_dataset(
         class_directories=new_class_dirs,
-        output_directory="models/yolo_dataset",
+        output_directory="yolo_dataset",
         target_samples_per_class=70,
-        existing_dataset="models/yolo_dataset"
+        existing_dataset="yolo_dataset"
     )
 
     print(f"Dataset creation completed in {time.time() - start_time:.2f} seconds.")
@@ -56,7 +56,7 @@ def button_clicked_train_model():
 
     # Train on a custom dataset
     ui.yolo_handler.train_model(
-        data_path="models/yolo_dataset/dataset.yaml",
+        data_path="yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
         epochs=50,
         batch_size=16,
@@ -79,6 +79,6 @@ if __name__ == "__main__":
     #points = calibration.run()
     points = [(0, 0), (640, 0), (640, 480), (0, 480)]
 
-    ui = UI(points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_take_photo, button_clicked_train_model, button_clicked_quit, button_clicked_open_submenu)
+    ui = UI(points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
     pygame.scrap.init()
     ui.run()
