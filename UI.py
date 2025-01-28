@@ -260,6 +260,7 @@ class UI:
         pygame.quit()
 
 
+"""
 if __name__ == "__main__":
     pygame.init()
     #calibration = ManualBoardCalibration()
@@ -268,4 +269,4 @@ if __name__ == "__main__":
 
     ui = UI(points)
     pygame.scrap.init()
-    ui.run()
+    ui.run()"""
