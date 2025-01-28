@@ -1,5 +1,7 @@
 import os
 import json
+import time
+
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
@@ -12,9 +14,15 @@ class Spotify_Manager:
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
         # File to store user's token
-        self.TOKEN_FILE = "spotify_token.json"
+        self.TOKEN_FILE = "variables/spotify_token.json"
+
+        self.last_url = ""
+        self.currently_playing_url = ""
+
 
         self.spotify_client = self.authenticate_user()
+
+        #self.currently_playing = self.spotify_client.current_playback()
 
     def authenticate_user(self):
         # Check if the token file exists
@@ -37,6 +45,9 @@ class Spotify_Manager:
         return spotipy.Spotify(auth=token_info["access_token"])
 
     def play_playlist_or_album(self, url):
+        self.last_url = url
+        self.currently_playing_url = url
+
         try:
             # Determine if the URL is a playlist or album
             if "playlist" in url:
@@ -70,9 +81,51 @@ class Spotify_Manager:
 
         except spotipy.exceptions.SpotifyException as e:
             print(f"Spotify API error: {e}")
+            if "The access token expired" in str(e):
+                print("Token expired. Please re-authenticate.")
+                os.remove(self.TOKEN_FILE)
+                time.sleep(0.5)
+                # Retry authentication
+                self.authenticate_user()
+                # Retry playing the playlist or album
+                self.play_playlist_or_album(self.last_url)
+
         except Exception as e:
             print(f"Error: {e}")
 
+    def find_first_non_empty(self, queue):
+        local_queue = queue
+
+        for x in local_queue:
+            if x != "":
+                print(f"Playing {x}")
+                self.play_playlist_or_album(x)
+            else:
+                print("Empty string in queue, skipping")
+                local_queue.remove(x)
+
+        return local_queue
+
+    def continue_queue(self, queue):
+
+        if self.currently_playing_url == "":
+            print("No current song, playlist ecc. Playing")
+            print("Skipping...")
+            local_queue = self.find_first_non_empty(queue)
+
+        elif not (str(self.spotify_client.current_playback().get('context', {}).get('external_urls', {}).get('spotify', None)) in self.currently_playing_url):
+            print("Current song is not the same as the one in the queue. Playing")
+            print("Skipping...")
+            local_queue = self.find_first_non_empty(queue)
+
+        else:
+            local_queue = queue
+            print("Nothing to do, waiting for the song to finish")
+
+        print("NOW PLAYING URL:", self.currently_playing_url)
+        print("NOW PLAYING:", self.spotify_client.current_playback().get('context', {}).get('external_urls', {}).get('spotify', None))
+
+        return local_queue
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()

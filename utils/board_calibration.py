@@ -1,6 +1,4 @@
 import cv2
-import numpy as np
-
 
 class ManualBoardCalibration:
     def __init__(self):
@@ -64,28 +62,10 @@ class ManualBoardCalibration:
             cv2.destroyAllWindows()
             return
 
+        self.capture.release()
         cv2.destroyAllWindows()
 
-
         return self.points
-
-        print("Using calibrated view.")
-        while True:
-            ret, frame = self.capture.read()
-            if not ret:
-                break
-
-            # Transform to the calibrated square view
-            transformed_view = transform_to_square(frame)
-
-            # Display the transformed board
-            cv2.imshow("Transformed Board", transformed_view)
-
-            # Exit with 'Esc'
-            if cv2.waitKey(1) == 27:
-                break
-
-        self.capture.release()
 
 
 if __name__ == "__main__":

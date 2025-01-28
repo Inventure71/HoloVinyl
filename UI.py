@@ -5,78 +5,17 @@ import cv2
 import numpy as np
 import pygame
 
-from pygame_utils.Button import Button
-from pygame_utils.TextField import TextField
-from utils.board_calibration import ManualBoardCalibration
-
-from utils.database_handler_V3 import create_or_update_yolo_dataset
+from utils.generic import load_mappings
+from utils.pygame_utils.Button import Button
+from utils.pygame_utils.TextField import TextField
+from submenu_UI import Submenu
 from utils.image_utils import transform_to_square
+from utils.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
 
 
-def button_clicked_start_prediction():
-    print("Button Start Prediction!")
-    ui.predicting = not ui.predicting
-
-def button_clicked_add_class():
-    # just add to dataset
-    print("Button Add Class!")
-    ui.remaining_photo_count = 5
-    ui.adding_class = ui.text_field.text
-
-def button_clicked_take_photo(frame):
-    print("Button Took Picture!")
-    os.makedirs(f"raw_images/{ui.adding_class}", exist_ok=True)
-
-    if ui.remaining_photo_count > 0:
-        ui.remaining_photo_count -= 1
-        cv2.imwrite(f"raw_images/{ui.adding_class}/img_{len(os.listdir(f'raw_images/{ui.adding_class}'))}.png", frame)
-
-    if ui.remaining_photo_count <= 0:
-        ui.adding_class = ""
-        print("Finished adding class!")
-
-def button_clicked_train_model():
-    print("Button Train!")
-
-    start_time = time.time()
-
-    # TODO: make this automatic
-    new_class_dirs = {
-        "happy face": "raw_images/happy_face",
-        "plane": "raw_images/plane"
-    }
-    new_class_dirs = {
-        "amongus": "raw_images/amongus",
-    }
-
-    create_or_update_yolo_dataset(
-        class_directories=new_class_dirs,
-        output_directory="yolo_dataset",
-        target_samples_per_class=70,
-        existing_dataset="yolo_dataset"
-    )
-
-    print(f"Dataset creation completed in {time.time() - start_time:.2f} seconds.")
-    start_time = time.time()
-
-    # Train on a custom dataset
-    ui.yolo_handler.train_model(
-        data_path="yolo_dataset/dataset.yaml",
-        model_type="yolo11n.pt",  # Small model
-        epochs=50,
-        batch_size=16,
-        img_size=640
-    )
-    print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
-
-def button_clicked_quit():
-    print("Button Quit!")
-    ui.running = False
-
-
 class UI:
-    def __init__(self, points):
+    def __init__(self, points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
         self.screen = pygame.display.set_mode((1024, 600))
         pygame.display.set_caption("UI TEST")
         self.clock = pygame.time.Clock()
@@ -132,8 +71,12 @@ class UI:
                 callback=button_clicked_train_model,
             ),
             Button(
+                x=1024 - 150, y=360, width=150, height=50, text="Class Mappings", font=self.font,
+                text_color=(255, 255, 255), button_color=(0, 128, 255), hover_color=(0, 102, 204),
+                callback=button_clicked_open_submenu),
+            Button(
                 x=1024-150,
-                y=360,
+                y=440,
                 width=150,
                 height=50,
                 text="Quit",
@@ -165,6 +108,14 @@ class UI:
         self.yolo_handler = YOLOHandler(model_path="yolo11n.pt")
         self.reload_YOLO_model()
 
+        self.submenu = Submenu(self.screen, self.font, self.yolo_handler)
+
+        self.mappings = load_mappings() #TODO update mappings once submenu is closed
+        self.queue = []  # Queue for classes
+        self.class_frame_count = {}  # Tracks consecutive frames for each class
+        self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
+
+        self.spotify_manager = Spotify_Manager()
 
     def reload_YOLO_model(self, custom = True):
         if custom:
@@ -180,21 +131,48 @@ class UI:
         frame = pygame.surfarray.make_surface(frame)
         self.screen.blit(frame, (0, 0))
 
+    def class_consecutive_frames(self, detected_classes):
+        # Update class frame counts
+        for cls in detected_classes:
+            self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
+            if self.class_frame_count[cls] >= self.threshold_frames and cls not in self.queue:
+                # Add to queue if seen for N frames
+                item = self.mappings.get(cls, '')
+                if item != '' and item not in self.queue:
+                    self.queue.append(item)
+                    print(f"Added to queue: {item}")
+                else:
+                    print("Class empty so skipping OR already in queue")
+
+
+        # Remove classes not detected in this frame
+        for cls in list(self.class_frame_count.keys()):
+            if cls not in detected_classes:
+                self.class_frame_count[cls] -= 1
+                if self.class_frame_count[cls] <= 0 and self.mappings.get(cls, cls) in self.queue:
+                    # Remove from queue when not seen anymore
+                    self.queue.remove(self.mappings.get(cls, ''))
+                    del self.class_frame_count[cls]
+                    print(f"Removed from queue: {self.mappings.get(cls, '')}")
+
     def process_frame(self, frame):
         """
         Process a single video frame and display predictions.
         :param frame: The current video frame.
         """
         # Get predictions for the frame
-        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="./runs/predict")
+        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="runs/predict")
+        detected_classes = set()
 
         try:
             self.display_frame(frame)
             for pred in predictions[0]:  # Assuming predictions for one frame
-                print("Prediction:", pred)
                 x1, y1, x2, y2 = [int(coord) for coord in pred["box"]]
                 label = pred["label"]
                 confidence = pred["confidence"]
+                print("Prediction:", label, confidence)
+
+                detected_classes.add(label)
 
                 # Draw bounding box
                 pygame.draw.rect(self.screen, (0, 255, 0), (x1, y1, x2 - x1, y2 - y1), 2)
@@ -203,23 +181,30 @@ class UI:
                 font = pygame.font.Font(None, 24)
                 text = font.render(f"{label} ({confidence:.2f})", True, (255, 255, 255))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
+
+            self.class_consecutive_frames(detected_classes)
         except Exception as e:
             print("Error while processing predictions:", e)
 
     def run(self):
+        queue_timer = time.time()
         while self.running:
             self.screen.fill((0,0,0))
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
 
-                for button in self.buttons:
-                    button.handle_event(event)
+                if self.submenu.active:
+                    self.submenu.handle_event(event)
 
-                if self.adding_class != "":
-                    self.button_to_take_picture.handle_event(event)
+                else:
+                    for button in self.buttons:
+                        button.handle_event(event)
 
-                self.text_field.handle_event(event)
+                    if self.adding_class != "":
+                        self.button_to_take_picture.handle_event(event)
+
+                    self.text_field.handle_event(event)
 
             ret, frame = self.webcam.read()
             frame = transform_to_square(frame, self.calibration_points)
@@ -245,14 +230,25 @@ class UI:
             else:
                 self.display_frame(frame)
 
-            for button in self.buttons:
-                button.draw(self.screen)
+            if self.submenu.active:
+                self.submenu.draw()
 
-            # Update the text field
-            self.text_field.update()
+            else:
+                for button in self.buttons:
+                    button.draw(self.screen)
 
-            # Draw the text field
-            self.text_field.draw(self.screen)
+                # Update the text field
+                self.text_field.update()
+
+                # Draw the text field
+                self.text_field.draw(self.screen)
+
+            """SPOTIFY"""
+            # Process the queue every 5 seconds
+            if time.time() - queue_timer >= 3.0:  # Check every 5 seconds
+                print("Checking queue...", self.queue)
+                self.queue = self.spotify_manager.continue_queue(self.queue)
+                queue_timer = time.time()
 
             self.clock.tick(60)
             pygame.display.flip()
@@ -263,7 +259,10 @@ class UI:
 
 if __name__ == "__main__":
     pygame.init()
-    calibration = ManualBoardCalibration()
-    points = calibration.run()
+    #calibration = ManualBoardCalibration()
+    #points = calibration.run()
+    points = [(0, 0), (640, 0), (640, 480), (0, 480)]
+
     ui = UI(points)
+    pygame.scrap.init()
     ui.run()

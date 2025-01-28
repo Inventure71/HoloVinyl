@@ -15,7 +15,6 @@ def capture_image_from_frame(frame, output_path, img_size = 640):
     image = image.resize((img_size,img_size))
     image.save(output_path)
 
-# Function to remove identical or too similar images
 def remove_similar_images(image_dir, threshold=5):
     # Load all image paths
     image_paths = [os.path.join(image_dir, fname) for fname in os.listdir(image_dir) if fname.endswith((".png", ".jpg", ".jpeg"))]
