@@ -1,11 +1,13 @@
 import os
 import time
+from types import new_class
 
 import cv2
 import pygame
 
 from UI import UI
 from utils.database_handler_V3 import create_or_update_yolo_dataset
+from utils.string_utils import unsanitize_string, sanitize_string
 
 #TODO: add sanitization of strings, removing spaces ecc
 
@@ -22,11 +24,12 @@ def button_clicked_add_class():
 
 def button_clicked_take_photo(frame):
     print("Button Took Picture!")
-    os.makedirs(f"raw_images/{ui.adding_class}", exist_ok=True)
+    new_class = sanitize_string(ui.adding_class)
+    os.makedirs(f"raw_images/{new_class}", exist_ok=True)
 
     if ui.remaining_photo_count > 0:
         ui.remaining_photo_count -= 1
-        cv2.imwrite(f"raw_images/{ui.adding_class}/img_{len(os.listdir(f'raw_images/{ui.adding_class}'))}.png", frame)
+        cv2.imwrite(f"raw_images/{new_class}/img_{len(os.listdir(f'raw_images/{new_class}'))}.png", frame)
 
     if ui.remaining_photo_count <= 0:
         ui.adding_class = ""
@@ -42,7 +45,7 @@ def button_clicked_train_model():
     new_classes_dirs = {}
 
     for directory in directories:
-        if directory not in already_existing_classes:
+        if unsanitize_string(directory) not in already_existing_classes:
             print(f"Adding class: {directory}")
             new_classes_dirs[directory] = f"raw_images/{directory}"
 
