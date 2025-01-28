@@ -1,4 +1,4 @@
-path: C:\Users\matte\PycharmProjects\YOLO\yolo_dataset
+path: C:\Users\matte\PycharmProjects\YOLO\custom_models\yolo_dataset
 train: train/images
 val: val/images
 test: test/images

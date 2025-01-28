@@ -1,6 +1,5 @@
 import os
 import time
-from types import new_class
 
 import cv2
 import pygame
@@ -25,11 +24,11 @@ def button_clicked_add_class():
 def button_clicked_take_photo(frame):
     print("Button Took Picture!")
     new_class = sanitize_string(ui.adding_class)
-    os.makedirs(f"raw_images/{new_class}", exist_ok=True)
+    os.makedirs(f"custom_models/raw_images/{new_class}", exist_ok=True)
 
     if ui.remaining_photo_count > 0:
         ui.remaining_photo_count -= 1
-        cv2.imwrite(f"raw_images/{new_class}/img_{len(os.listdir(f'raw_images/{new_class}'))}.png", frame)
+        cv2.imwrite(f"custom_models/raw_images/{new_class}/img_{len(os.listdir(f'custom_models/raw_images/{new_class}'))}.png", frame)
 
     if ui.remaining_photo_count <= 0:
         ui.adding_class = ""
@@ -40,14 +39,14 @@ def button_clicked_train_model():
 
     start_time = time.time()
 
-    directories = os.listdir("raw_images")
+    directories = os.listdir("custom_models/raw_images")
     already_existing_classes = ui.yolo_handler.get_classes()
     new_classes_dirs = {}
 
     for directory in directories:
         if unsanitize_string(directory) not in already_existing_classes:
             print(f"Adding class: {directory}")
-            new_classes_dirs[directory] = f"raw_images/{directory}"
+            new_classes_dirs[directory] = f"custom_models/raw_images/{directory}"
 
     print(f"Missing classes: {new_classes_dirs}")
 
@@ -58,9 +57,9 @@ def button_clicked_train_model():
 
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
-        output_directory="yolo_dataset",
+        output_directory="custom_models/yolo_dataset",
         target_samples_per_class=70,
-        existing_dataset="yolo_dataset"
+        existing_dataset="custom_models/yolo_dataset"
     )
 
     print(f"Dataset creation completed in {time.time() - start_time:.2f} seconds.")
@@ -68,7 +67,7 @@ def button_clicked_train_model():
 
     # Train on a custom dataset
     ui.yolo_handler.train_model(
-        data_path="yolo_dataset/dataset.yaml",
+        data_path="custom_models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
         epochs=50,
         batch_size=16,

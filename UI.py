@@ -122,7 +122,7 @@ class UI:
 
     def reload_YOLO_model(self, custom = True):
         if custom:
-            self.yolo_handler.load_model(model_path="runs/detect/train3/weights/best.pt")
+            self.yolo_handler.load_model(model_path="custom_models/runs/detect/train3/weights/best.pt")
 
         else:
             self.yolo_handler.load_model(model_path="yolo11n.pt")
@@ -164,7 +164,7 @@ class UI:
         :param frame: The current video frame.
         """
         # Get predictions for the frame
-        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="runs/predict")
+        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="custom_models/runs/predict")
         detected_classes = set()
 
         try:
@@ -217,7 +217,7 @@ class UI:
             if self.adding_class != "":
                 class_name = self.text_field.text
                 print(f"Adding class: {class_name}")
-                directory = f"raw_images/{class_name}"
+                directory = f"custom_models/raw_images/{class_name}"
                 os.makedirs(directory, exist_ok=True)
 
                 self.display_frame(frame)
