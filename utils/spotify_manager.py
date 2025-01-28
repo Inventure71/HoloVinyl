@@ -14,11 +14,15 @@ class Spotify_Manager:
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
         # File to store user's token
-        self.TOKEN_FILE = "../variables/spotify_token.json"
+        self.TOKEN_FILE = "variables/spotify_token.json"
 
         self.last_url = ""
+        self.currently_playing_url = ""
+
 
         self.spotify_client = self.authenticate_user()
+
+        #self.currently_playing = self.spotify_client.current_playback()
 
     def authenticate_user(self):
         # Check if the token file exists
@@ -42,6 +46,8 @@ class Spotify_Manager:
 
     def play_playlist_or_album(self, url):
         self.last_url = url
+        self.currently_playing_url = url
+
         try:
             # Determine if the URL is a playlist or album
             if "playlist" in url:
@@ -87,9 +93,34 @@ class Spotify_Manager:
         except Exception as e:
             print(f"Error: {e}")
 
+    def find_first_non_empty(self, queue):
+        local_queue = queue
+
+        for x in local_queue:
+            if x != "":
+                print(f"Playing {x}")
+                self.play_playlist_or_album(x)
+            else:
+                print("Empty string in queue, skipping")
+                local_queue.remove(x)
+
+        return local_queue
+
     def continue_queue(self, queue):
+        local_queue = queue
 
+        if self.currently_playing_url == "":
+            print("No current song, playlist ecc. Playing")
+            print("Skipping...")
+            self.find_first_non_empty(local_queue)
 
+        elif self.currently_playing_url != self.spotify_client.current_playback():
+            print("Current song is not the same as the one in the queue. Playing")
+            print("Skipping...")
+            self.find_first_non_empty(local_queue)
+
+        else:
+            print("Nothing to do, waiting for the song to finish")
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()

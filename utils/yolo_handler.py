@@ -80,7 +80,7 @@ class YOLOHandler:
         )
 
         print(f"Predictions completed. Results saved to: {save_dir}" if save else "Predictions completed.")
-        print("Results structure:", results)
+        #print("Results structure:", results)
 
         all_predictions = []
 

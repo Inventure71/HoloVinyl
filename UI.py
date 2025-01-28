@@ -1,4 +1,5 @@
 import os
+import time
 
 import cv2
 import numpy as np
@@ -9,6 +10,7 @@ from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
 from utils.image_utils import transform_to_square
+from utils.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
 
 
@@ -113,6 +115,7 @@ class UI:
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
 
+        self.spotify_manager = Spotify_Manager()
 
     def reload_YOLO_model(self, custom = True):
         if custom:
@@ -159,10 +162,11 @@ class UI:
         try:
             self.display_frame(frame)
             for pred in predictions[0]:  # Assuming predictions for one frame
-                print("Prediction:", pred)
                 x1, y1, x2, y2 = [int(coord) for coord in pred["box"]]
                 label = pred["label"]
                 confidence = pred["confidence"]
+                print("Prediction:", label, confidence)
+
                 detected_classes.add(label)
 
                 # Draw bounding box
@@ -178,6 +182,7 @@ class UI:
             print("Error while processing predictions:", e)
 
     def run(self):
+        queue_timer = time.time()
         while self.running:
             self.screen.fill((0,0,0))
             for event in pygame.event.get():
@@ -232,6 +237,12 @@ class UI:
 
                 # Draw the text field
                 self.text_field.draw(self.screen)
+
+            """SPOTIFY"""
+            # Process the queue every 5 seconds
+            if time.time() - queue_timer >= 2.0:  # Check every 5 seconds
+                self.spotify_manager.continue_queue(self.queue)
+                queue_timer = time.time()
 
             self.clock.tick(60)
             pygame.display.flip()
