@@ -20,11 +20,11 @@ def button_clicked_add_class():
 
 def button_clicked_take_photo(frame):
     print("Button Took Picture!")
-    os.makedirs(f"raw_images/{ui.adding_class}", exist_ok=True)
+    os.makedirs(f"models/raw_images/{ui.adding_class}", exist_ok=True)
 
     if ui.remaining_photo_count > 0:
         ui.remaining_photo_count -= 1
-        cv2.imwrite(f"raw_images/{ui.adding_class}/img_{len(os.listdir(f'raw_images/{ui.adding_class}'))}.png", frame)
+        cv2.imwrite(f"models/raw_images/{ui.adding_class}/img_{len(os.listdir(f'models/raw_images/{ui.adding_class}'))}.png", frame)
 
     if ui.remaining_photo_count <= 0:
         ui.adding_class = ""
@@ -37,18 +37,18 @@ def button_clicked_train_model():
 
     # TODO: make this automatic
     new_class_dirs = {
-        "happy face": "raw_images/happy_face",
-        "plane": "raw_images/plane"
+        "happy face": "models/raw_images/happy_face",
+        "plane": "models/raw_images/plane"
     }
     new_class_dirs = {
-        "amongus": "raw_images/amongus",
+        "amongus": "models/raw_images/amongus",
     }
 
     create_or_update_yolo_dataset(
         class_directories=new_class_dirs,
-        output_directory="yolo_dataset",
+        output_directory="models/yolo_dataset",
         target_samples_per_class=70,
-        existing_dataset="yolo_dataset"
+        existing_dataset="models/yolo_dataset"
     )
 
     print(f"Dataset creation completed in {time.time() - start_time:.2f} seconds.")
@@ -56,7 +56,7 @@ def button_clicked_train_model():
 
     # Train on a custom dataset
     ui.yolo_handler.train_model(
-        data_path="yolo_dataset/dataset.yaml",
+        data_path="models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
         epochs=50,
         batch_size=16,

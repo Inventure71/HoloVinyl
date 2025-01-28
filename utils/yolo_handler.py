@@ -15,7 +15,7 @@ class YOLOHandler:
         else:
             self.model = None
 
-    def train_model(self, data_path: str, model_type: str = "yolov8n.pt", epochs: int = 50, batch_size: int = 16,
+    def train_model(self, data_path: str, model_type: str = "yolov11n.pt", epochs: int = 50, batch_size: int = 16,
                     img_size: int = 640, save_dir: str = "./runs/train"):
         """
         Train a YOLO model on a custom dataset.

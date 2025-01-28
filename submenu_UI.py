@@ -1,8 +1,8 @@
 import json
 import os
 
-from pygame_utils.Button import Button
-from pygame_utils.TextField import TextField
+from utils.pygame_utils.Button import Button
+from utils.pygame_utils.TextField import TextField
 
 # File to save mappings
 MAPPING_FILE = "class_mappings.json"
