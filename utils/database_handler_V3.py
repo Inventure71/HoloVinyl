@@ -5,7 +5,7 @@ import shutil
 import albumentations as A
 import yaml
 from utils.find_object import process_image_with_label_V2
-from utils.generic import convert_pascal_voc_to_yolo
+from utils.generic import convert_pascal_voc_to_yolo, draw_bounding_box
 from utils.image_utils import remove_similar_images
 from typing import Dict, List, Tuple, Union, Optional
 
@@ -68,6 +68,7 @@ def create_or_update_yolo_dataset(
         target_samples_per_class: int = 70,
         train_split: float = 0.8,
         val_split: float = 0.1,
+        debug_boundaries: bool = False,
         existing_dataset: Optional[str] = None
 ):
     """
@@ -102,8 +103,21 @@ def create_or_update_yolo_dataset(
         os.makedirs(os.path.join(dir_path, 'images'), exist_ok=True)
         os.makedirs(os.path.join(dir_path, 'labels'), exist_ok=True)
 
+    # NOTE: DEBUG ONLY CAN BE REMOVED:
+    if debug_boundaries:
+        # **Define Debug Directory Structure**
+        debug_output_directory = "custom_models/debug_images"  # You can change this path as needed
+        debug_dataset_dirs = {
+            'train': os.path.join(debug_output_directory, 'train'),
+            'val': os.path.join(debug_output_directory, 'val'),
+            'test': os.path.join(debug_output_directory, 'test')
+        }
+
+        for dir_path in debug_dataset_dirs.values():
+            os.makedirs(dir_path, exist_ok=True)
+
     # Process new classes
-    all_image_paths = []  # List of (image_path, label_data, class_id)
+    all_image_paths = []  # List of (image_path, label_data, class_id, class_name)
 
     for class_name, input_directory in class_directories.items():
         # Skip if class already exists
@@ -124,6 +138,10 @@ def create_or_update_yolo_dataset(
             class_id,
             target_samples_per_class
         )
+        # Include class_name in the tuple for debugging
+        class_image_paths = [
+            (img_path, yolo_label, class_id, class_name) for (img_path, yolo_label, class_id) in class_image_paths
+        ]
         all_image_paths.extend(class_image_paths)
 
     if not all_image_paths:
@@ -149,12 +167,13 @@ def create_or_update_yolo_dataset(
         existing_files = [f for f in os.listdir(images_dir) if f.endswith(('.jpg', '.png', '.jpeg'))]
         current_indices[split_name] = len(existing_files)
 
-    # Save new data to respective directories
+    # Save new data to respective directories and save debug copies
     for split_name, split_data in splits.items():
         start_idx = current_indices[split_name]
-        for idx, (img_path, yolo_label, class_id) in enumerate(split_data, start=start_idx):
+        for idx, (img_path, yolo_label, class_id, class_name) in enumerate(split_data, start=start_idx):
             # Copy image
-            img_filename = f"{split_name}_{idx}{os.path.splitext(img_path)[1]}"
+            img_ext = os.path.splitext(img_path)[1]
+            img_filename = f"{split_name}_{idx}{img_ext}"
             dst_img_path = os.path.join(dataset_dirs[split_name], 'images', img_filename)
             shutil.copy2(img_path, dst_img_path)
 
@@ -164,8 +183,20 @@ def create_or_update_yolo_dataset(
             with open(label_path, 'w') as f:
                 f.write(f"{class_id} {' '.join(map(str, yolo_label))}\n")
 
+            # NOTE: DEBUG ONLY CAN BE REMOVED:
+            if debug_boundaries:
+                # **Save Debug Image with Bounding Box**
+                debug_img_path = os.path.join(debug_dataset_dirs[split_name], img_filename)
+                draw_bounding_box(
+                    image_path=dst_img_path,
+                    yolo_bbox=yolo_label,
+                    class_id=class_id,
+                    class_name=class_name,
+                    output_path=debug_img_path
+                )
+
     # Clean up temporary augmented images
-    for img_path, _, _ in all_image_paths:
+    for img_path, _, _, _ in all_image_paths:
         if 'aug_' in img_path:
             os.remove(img_path)
 
@@ -279,8 +310,6 @@ def process_class_images(
             class_image_paths.append((aug_path, aug_yolo_label, class_id))
 
     return class_image_paths
-
-
 
 
 # Example usage

@@ -59,6 +59,7 @@ def button_clicked_train_model():
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
         target_samples_per_class=50,
+        debug_boundaries=False,
         #existing_dataset="custom_models/yolo_dataset"
     )
 
@@ -75,6 +76,11 @@ def button_clicked_train_model():
         save_dir="custom_models/runs/train"
     )
     print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
+
+    # TEST: manually move runs folder under custom_models
+    print("Manually moving runs under custom_models")
+    os.system("mv runs custom_models")
+    print("Moved folder and completed training")
 
 def button_clicked_quit():
     print("Button Quit!")
