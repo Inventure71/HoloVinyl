@@ -4,6 +4,39 @@ from PIL import Image, ImageDraw
 import cv2
 
 
+def process_image_with_label_V2(image_path, label="Object"):
+    """
+    Returns bounding box as (x_min, y_min, x_max, y_max) in absolute pixel coordinates.
+    """
+    # Load the input image
+    input_image = Image.open(image_path).convert("RGBA")
+
+    # Remove background using rembg
+    output_array = rembg.remove(np.array(input_image))
+
+    # Create a binary mask from the alpha channel
+    alpha_mask = output_array[:, :, 3]
+    _, binary_mask = cv2.threshold(alpha_mask, 128, 255, cv2.THRESH_BINARY)
+
+    # Find contours in the binary mask
+    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("No object detected in the image")
+
+    largest_contour = max(contours, key=cv2.contourArea)
+
+    # Get the min area rectangle or bounding rect
+    x, y, w, h = cv2.boundingRect(largest_contour)
+
+    # Return box in (x_min, y_min, x_max, y_max)
+    x_min = x
+    y_min = y
+    x_max = x + w
+    y_max = y + h
+
+    return (x_min, y_min, x_max, y_max)
+
+
 def process_image_with_label(image_path, output_path, label="Object", save_image=False):
     # Load the input image
     input_image = Image.open(image_path).convert("RGBA")
