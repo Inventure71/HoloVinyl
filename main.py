@@ -95,7 +95,7 @@ if __name__ == "__main__":
     pygame.init()
     #calibration = ManualBoardCalibration()
     #points = calibration.run()
-    points = [(0, 0), (640, 0), (640, 480), (0, 480)]
+    points = [(0, 0), (600, 0), (600, 600), (0, 600)]
     enable_spotify = False
 
     ui = UI(points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)

@@ -23,7 +23,7 @@ class UI:
 
         self.calibration_points = points
 
-        self.webcam = cv2.VideoCapture(4)
+        self.webcam = cv2.VideoCapture(0)
 
         self.predicting = False
         self.adding_class = ""
@@ -212,7 +212,7 @@ class UI:
             ret, frame = self.webcam.read()
             frame = transform_to_square(frame, self.calibration_points)
             self.frame = frame
-            frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
+            #frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
 
             if self.adding_class != "":
                 class_name = self.text_field.text
@@ -263,8 +263,8 @@ class UI:
 """
 if __name__ == "__main__":
     pygame.init()
-    #calibration = ManualBoardCalibration()
-    #points = calibration.run()
+    calibration = ManualBoardCalibration()
+    points = calibration.run()
     points = [(0, 0), (640, 0), (640, 480), (0, 480)]
 
     ui = UI(points)
