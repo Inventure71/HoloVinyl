@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 import pygame
 
+from utils.generic import load_mappings
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
@@ -107,6 +108,12 @@ class UI:
 
         self.submenu = Submenu(self.screen, self.font, self.yolo_handler)
 
+        self.mappings = load_mappings() #TODO update mappings once submenu is closed
+        self.queue = []  # Queue for classes
+        self.class_frame_count = {}  # Tracks consecutive frames for each class
+        self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
+
+
     def reload_YOLO_model(self, custom = True):
         if custom:
             self.yolo_handler.load_model(model_path="runs/detect/train3/weights/best.pt")
@@ -121,6 +128,25 @@ class UI:
         frame = pygame.surfarray.make_surface(frame)
         self.screen.blit(frame, (0, 0))
 
+    def class_consecutive_frames(self, detected_classes):
+        # Update class frame counts
+        for cls in detected_classes:
+            self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
+            if self.class_frame_count[cls] >= self.threshold_frames and cls not in self.queue:
+                # Add to queue if seen for N frames
+                self.queue.append(self.mappings.get(cls, cls))
+                print(f"Added to queue: {self.mappings.get(cls, cls)}")
+
+        # Remove classes not detected in this frame
+        for cls in list(self.class_frame_count.keys()):
+            if cls not in detected_classes:
+                self.class_frame_count[cls] -= 1
+                if self.class_frame_count[cls] <= 0 and self.mappings.get(cls, cls) in self.queue:
+                    # Remove from queue when not seen anymore
+                    self.queue.remove(self.mappings.get(cls, cls))
+                    del self.class_frame_count[cls]
+                    print(f"Removed from queue: {self.mappings.get(cls, cls)}")
+
     def process_frame(self, frame):
         """
         Process a single video frame and display predictions.
@@ -128,6 +154,7 @@ class UI:
         """
         # Get predictions for the frame
         predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="runs/predict")
+        detected_classes = set()
 
         try:
             self.display_frame(frame)
@@ -136,6 +163,7 @@ class UI:
                 x1, y1, x2, y2 = [int(coord) for coord in pred["box"]]
                 label = pred["label"]
                 confidence = pred["confidence"]
+                detected_classes.add(label)
 
                 # Draw bounding box
                 pygame.draw.rect(self.screen, (0, 255, 0), (x1, y1, x2 - x1, y2 - y1), 2)
@@ -144,6 +172,8 @@ class UI:
                 font = pygame.font.Font(None, 24)
                 text = font.render(f"{label} ({confidence:.2f})", True, (255, 255, 255))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
+
+            self.class_consecutive_frames(detected_classes)
         except Exception as e:
             print("Error while processing predictions:", e)
 
@@ -192,7 +222,6 @@ class UI:
 
             if self.submenu.active:
                 self.submenu.draw()
-
 
             else:
                 for button in self.buttons:

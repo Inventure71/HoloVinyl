@@ -87,6 +87,9 @@ class Spotify_Manager:
         except Exception as e:
             print(f"Error: {e}")
 
+    def continue_queue(self, queue):
+
+
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()
