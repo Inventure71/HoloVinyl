@@ -19,18 +19,30 @@ class Spotify_Manager:
         self.last_url = ""
         self.currently_playing_url = ""
 
-
+        self.is_authenticated = False
         self.spotify_client = self.authenticate_user()
+        self.is_authenticated = True
 
         #self.currently_playing = self.spotify_client.current_playback()
 
     def authenticate_user(self):
+        print("Authenticating user...")
         # Check if the token file exists
         if os.path.exists(self.TOKEN_FILE):
             with open(self.TOKEN_FILE, "r") as file:
+                print("Token file found.")
                 token_info = json.load(file)
 
-                return spotipy.Spotify(auth=token_info["access_token"])
+                print("Is token expired:", spotipy.SpotifyOAuth.is_token_expired(token_info))
+
+                if not spotipy.SpotifyOAuth.is_token_expired(token_info):
+                    return spotipy.Spotify(auth=token_info["access_token"])
+                else:
+                    print(spotipy.SpotifyOAuth.refresh_access_token(token_info["refresh_token"]))
+
+            #print("Token expired. Please re-authenticate.")
+            #os.remove(self.TOKEN_FILE)
+            #time.sleep(0.1)
 
         # Authenticate with SpotifyOAuth and save the token
         sp_oauth = SpotifyOAuth(
@@ -42,6 +54,7 @@ class Spotify_Manager:
         token_info = sp_oauth.get_access_token()
         with open(self.TOKEN_FILE, "w") as file:
             json.dump(token_info, file)
+        print("User authenticated.")
         return spotipy.Spotify(auth=token_info["access_token"])
 
     def play_playlist_or_album(self, url):
@@ -107,8 +120,16 @@ class Spotify_Manager:
         return local_queue
 
     def continue_queue(self, queue):
+        if not self.is_authenticated:
+            print("Not authenticated")
+            return queue
 
         if self.currently_playing_url == "":
+            print("No current song, playlist ecc. Playing")
+            print("Skipping...")
+            local_queue = self.find_first_non_empty(queue)
+
+        elif self.spotify_client.current_playback() is None:
             print("No current song, playlist ecc. Playing")
             print("Skipping...")
             local_queue = self.find_first_non_empty(queue)
@@ -129,6 +150,5 @@ class Spotify_Manager:
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()
-    spotify_client = spotify.authenticate_user()
     url = input("Enter Spotify playlist or album URL: ")
     spotify.play_playlist_or_album(url)

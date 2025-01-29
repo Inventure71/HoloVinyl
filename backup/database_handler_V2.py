@@ -177,8 +177,8 @@ names:
 # Example usage
 if __name__ == "__main__":
     create_yolo_dataset(
-        input_directory="raw_images",
-        output_directory="yolo_dataset",
+        input_directory="custom_models/raw_images",
+        output_directory="custom_models/yolo_dataset",
         label="Object",
         target_samples=70
     )

@@ -2,7 +2,7 @@ import pygame
 
 
 class Button:
-    def __init__(self, x, y, width, height, text, font, text_color, button_color, hover_color, callback):
+    def __init__(self, x, y, width, height, text, font, text_color, button_color, hover_color, callback, border_radius=15):
         """
         Initialize the button.
 
@@ -16,6 +16,7 @@ class Button:
         :param button_color: Color of the button.
         :param hover_color: Color of the button when hovered.
         :param callback: Function to call when the button is clicked.
+        :param border_radius: Radius of the button corners.
         """
         self.rect = pygame.Rect(x, y, width, height)
         self.text = text
@@ -25,15 +26,16 @@ class Button:
         self.hover_color = hover_color
         self.callback = callback
         self.is_hovered = False
+        self.border_radius = border_radius
 
     def draw(self, screen):
         """
         Draw the button on the screen.
         :param screen: Pygame surface to draw on.
         """
-        # Draw button rectangle
+        # Draw button rectangle with rounded corners
         color = self.hover_color if self.is_hovered else self.button_color
-        pygame.draw.rect(screen, color, self.rect)
+        pygame.draw.rect(screen, color, self.rect, border_radius=self.border_radius)
 
         # Draw button text
         text_surface = self.font.render(self.text, True, self.text_color)
@@ -52,4 +54,3 @@ class Button:
             if event.button == 1 and self.is_hovered:
                 # Call the callback function when the button is clicked
                 self.callback()
-

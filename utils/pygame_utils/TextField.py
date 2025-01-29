@@ -2,7 +2,7 @@ import pygame
 
 
 class TextField:
-    def __init__(self, x, y, width, height, font, text_color, bg_color, border_color, border_width=2):
+    def __init__(self, x, y, width, height, font, text_color, bg_color, border_color, border_width=2, border_radius=15):
         """
         Initialize the text field.
 
@@ -15,6 +15,7 @@ class TextField:
         :param bg_color: Background color of the text field.
         :param border_color: Border color of the text field.
         :param border_width: Border width of the text field.
+        :param border_radius: Radius of the text field corners.
         """
         self.rect = pygame.Rect(x, y, width, height)
         self.font = font
@@ -22,6 +23,7 @@ class TextField:
         self.bg_color = bg_color
         self.border_color = border_color
         self.border_width = border_width
+        self.border_radius = border_radius
         self.text = ""  # The text entered by the user
         self.active = False  # Whether the text field is focused
         self.cursor_visible = True
@@ -79,17 +81,19 @@ class TextField:
         Draw the text field on the screen.
         :param screen: Pygame surface to draw on.
         """
-        # Draw the background and border
-        pygame.draw.rect(screen, self.bg_color, self.rect)
-        pygame.draw.rect(screen, self.border_color, self.rect, self.border_width)
+        # Draw the background with rounded corners
+        pygame.draw.rect(screen, self.bg_color, self.rect, border_radius=self.border_radius)
+
+        # Draw the border with rounded corners
+        pygame.draw.rect(screen, self.border_color, self.rect, self.border_width, border_radius=self.border_radius)
 
         # Render the text
         text_surface = self.font.render(self.text, True, self.text_color)
-        screen.blit(text_surface, (self.rect.x + 5, self.rect.y + (self.rect.height - text_surface.get_height()) // 2))
+        screen.blit(text_surface, (self.rect.x + 10, self.rect.y + (self.rect.height - text_surface.get_height()) // 2))
 
         # Draw the blinking cursor if the field is active
         if self.active and self.cursor_visible:
-            cursor_x = self.rect.x + 5 + text_surface.get_width()
+            cursor_x = self.rect.x + 10 + text_surface.get_width()
             cursor_y = self.rect.y + 5
             cursor_height = self.rect.height - 10
             pygame.draw.rect(screen, self.text_color, (cursor_x, cursor_y, 2, cursor_height))

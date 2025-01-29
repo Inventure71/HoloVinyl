@@ -44,6 +44,48 @@ def remove_similar_images(image_dir, threshold=5):
 
 def transform_to_square(frame, points):
     """
+    Crops the frame to a centered square (removing borders equally) and applies perspective transformation.
+    """
+    if len(points) != 4:
+        print("Error: Calibration not complete. Can't transform.")
+        return frame
+
+    # Define the desired square size
+    side_length = 600  # Define the output size of the square
+
+    # Get frame dimensions
+    height, width = frame.shape[:2]
+
+    # Calculate center cropping dimensions
+    if width > height:  # Wide frame, crop horizontally
+        offset = (width - height) // 2
+        cropped_frame = frame[:, offset:offset + height]
+    elif height > width:  # Tall frame, crop vertically
+        offset = (height - width) // 2
+        cropped_frame = frame[offset:offset + width, :]
+    else:
+        cropped_frame = frame  # Already square
+
+    # Resize cropped frame to the desired output size
+    resized_frame = cv2.resize(cropped_frame, (side_length, side_length))
+
+    # Define destination points for perspective transformation
+    dst = np.array([
+        [0, 0],
+        [side_length - 1, 0],
+        [side_length - 1, side_length - 1],
+        [0, side_length - 1]
+    ], dtype="float32")
+
+    # Apply perspective transformation
+    src = np.array(points, dtype="float32")
+    matrix = cv2.getPerspectiveTransform(src, dst)
+    warped = cv2.warpPerspective(resized_frame, matrix, (side_length, side_length))
+
+    return warped
+
+def transform_to_square_old(frame, points):
+    """
     Applies perspective transformation to warp the board to a square view.
     """
     if len(points) != 4:

@@ -16,7 +16,7 @@ class YOLOHandler:
             self.model = None
 
     def train_model(self, data_path: str, model_type: str = "yolov11n.pt", epochs: int = 50, batch_size: int = 16,
-                    img_size: int = 640, save_dir: str = "./runs/train"):
+                    img_size: int = 640, save_dir: str = "./custom_models/runs/train"):
         """
         Train a YOLO model on a custom dataset.
         :param data_path: Path to the data.yaml file.
@@ -36,13 +36,18 @@ class YOLOHandler:
         )
         print(f"Training completed. Results saved in: {save_dir}")
 
-    def load_model(self, model_path: str):
+    def load_model(self, model_path: str, fallback="yolo11n.pt"):
         """
         Load an already trained YOLO model.
         :param model_path: Path to the model file (e.g., best.pt).
         """
-        self.model = YOLO(model_path)
-        print(f"Model loaded from: {model_path}")
+        try:
+            self.model = YOLO(model_path)
+            print(f"Model loaded from: {model_path}")
+        except FileNotFoundError:
+            print(f"Model file not found: {model_path}")
+            self.model = YOLO(fallback)
+
 
     def get_classes(self) -> List[str]:
         """
@@ -56,10 +61,12 @@ class YOLOHandler:
         if hasattr(self.model, 'names'):
             return list(self.model.names.values())
         else:
-            raise AttributeError("The loaded model does not contain class names.")
+            print("No class names found in the model.")
+            return []
+            #raise AttributeError("The loaded model does not contain class names.")
 
     def predict(self, source: Union[str, List[str]], conf_threshold: float = 0.5, save: bool = False,
-                save_dir: str = "./runs/predict"):
+                save_dir: str = "./custom_models/runs/predict"):
         """
         Perform predictions on images, videos, or directories of images.
         :param source: Path to an image, video, or folder of images.
@@ -106,7 +113,7 @@ class YOLOHandler:
 
         return all_predictions
 
-    def evaluate_model(self, data_path: str, save_dir: str = "./runs/val"):
+    def evaluate_model(self, data_path: str, save_dir: str = "./custom_models/runs/val"):
         """
         Evaluate the model on a validation dataset.
         :param data_path: Path to the data.yaml file for validation.
@@ -123,7 +130,7 @@ class YOLOHandler:
         print(f"Evaluation completed. Results saved in: {save_dir}")
         return metrics
 
-    def export_model(self, format: str = "onnx", save_dir: str = "./runs/export"):
+    def export_model(self, format: str = "onnx", save_dir: str = "./custom_models/runs/export"):
         """
         Export the model to a specified format.
         :param format: Export format (e.g., 'onnx', 'engine', 'torchscript').

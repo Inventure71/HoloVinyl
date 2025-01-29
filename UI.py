@@ -5,25 +5,35 @@ import cv2
 import numpy as np
 import pygame
 
+from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
+from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.generic import load_mappings
+from utils.image_utils import transform_to_square
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
-from utils.image_utils import transform_to_square
 from utils.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
 
 
 class UI:
-    def __init__(self, points, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
+    def __init__(self, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
         self.screen = pygame.display.set_mode((1024, 600))
         pygame.display.set_caption("UI TEST")
         self.clock = pygame.time.Clock()
         self.running = True
 
-        self.calibration_points = points
+        self.webcam = cv2.VideoCapture(1)
+        _, self.frame = self.webcam.read()
 
-        self.webcam = cv2.VideoCapture(4)
+        self.calibration_active = True if points is None else False
+        self.marker_handler = ArMarkerHandler()
+
+        if self.calibration_active:
+            self.calibration_points = None
+            self.calibrate_board(self.frame)
+        else:
+            self.calibration_points = points
 
         self.predicting = False
         self.adding_class = ""
@@ -35,11 +45,11 @@ class UI:
         # list of 4 buttons
         self.buttons = [
             Button(
-                x=1024-150,
-                y=120,
-                width=150,
+                x=600-50, #
+                y=0,
+                width=50,
                 height=50,
-                text="Toggle Prediction",
+                text="TP",
                 font=self.font,
                 text_color=(255, 255, 255),
                 button_color=(0, 128, 255),
@@ -47,9 +57,9 @@ class UI:
                 callback=button_clicked_start_prediction,
             ),
             Button(
-                x=1024-150,
-                y=200,
-                width=150,
+                x=1024-200,
+                y=0,
+                width=200,
                 height=50,
                 text="Add Class",
                 font=self.font,
@@ -59,9 +69,9 @@ class UI:
                 callback=button_clicked_add_class,
             ),
             Button(
-                x=1024-150,
-                y=280,
-                width=150,
+                x=1024-200,
+                y=80,
+                width=200,
                 height=50,
                 text="Train Model",
                 font=self.font,
@@ -71,13 +81,13 @@ class UI:
                 callback=button_clicked_train_model,
             ),
             Button(
-                x=1024 - 150, y=360, width=150, height=50, text="Class Mappings", font=self.font,
+                x=1024 - 200, y=160, width=200, height=50, text="Class Mappings", font=self.font,
                 text_color=(255, 255, 255), button_color=(0, 128, 255), hover_color=(0, 102, 204),
                 callback=button_clicked_open_submenu),
             Button(
-                x=1024-150,
-                y=440,
-                width=150,
+                x=1024-200,
+                y=550,
+                width=200,
                 height=50,
                 text="Quit",
                 font=self.font,
@@ -88,7 +98,7 @@ class UI:
             ),
         ]
 
-        self.frame = None
+
         self.button_to_take_picture = Button(
                     x=512,
                     y=440,
@@ -102,7 +112,7 @@ class UI:
                     callback= lambda: button_clicked_take_photo(self.frame),
                 )
 
-        self.text_field = TextField(0, 500, 400, 50, self.font, text_color=(0, 0, 0), bg_color=(255, 255, 255), border_color=(0, 0, 0))
+        self.text_field = TextField(1024-200-200, 0, 200, 50, self.font, text_color=(0, 0, 0), bg_color=(255, 255, 255), border_color=(0, 0, 0))
 
 
         self.yolo_handler = YOLOHandler(model_path="yolo11n.pt")
@@ -115,11 +125,27 @@ class UI:
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
 
-        self.spotify_manager = Spotify_Manager()
+        # variable to check if i should activate it
+        self.enable_spotify = enable_spotify
+        if self.enable_spotify:
+            self.spotify_manager = Spotify_Manager()
+
+    def calibrate_board(self, frame):
+        if self.calibration_active:
+            self.calibration_points = self.marker_handler.detect_corners(frame, use_webcam=True)
+            if self.calibration_points is not None:
+                print("Calibration successful!")
+                return
+            print("Calibration failed!")
+
+        print("Calibration not active!")
+        # Convert corners list to a NumPy array
+        self.calibration_points = np.array([(0, 0), (600, 0), (600, 600), (0, 600)], dtype=np.float32)
+        return
 
     def reload_YOLO_model(self, custom = True):
         if custom:
-            self.yolo_handler.load_model(model_path="runs/detect/train3/weights/best.pt")
+            self.yolo_handler.load_model(model_path="custom_models/runs/detect/train3/weights/best.pt")
 
         else:
             self.yolo_handler.load_model(model_path="yolo11n.pt")
@@ -161,7 +187,7 @@ class UI:
         :param frame: The current video frame.
         """
         # Get predictions for the frame
-        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="runs/predict")
+        predictions = self.yolo_handler.predict(frame, conf_threshold=0.5, save=False, save_dir="custom_models/runs/predict")
         detected_classes = set()
 
         try:
@@ -207,14 +233,18 @@ class UI:
                     self.text_field.handle_event(event)
 
             ret, frame = self.webcam.read()
-            frame = transform_to_square(frame, self.calibration_points)
+
+            # new version
+            frame = self.marker_handler.warp_and_crop_board(frame, corners=self.calibration_points, is_for_frame=True)
+            #frame = transform_to_square(frame, self.calibration_points)
+
             self.frame = frame
-            frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
+            #frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
 
             if self.adding_class != "":
                 class_name = self.text_field.text
                 print(f"Adding class: {class_name}")
-                directory = f"raw_images/{class_name}"
+                directory = f"custom_models/raw_images/{class_name}"
                 os.makedirs(directory, exist_ok=True)
 
                 self.display_frame(frame)
@@ -245,7 +275,7 @@ class UI:
 
             """SPOTIFY"""
             # Process the queue every 5 seconds
-            if time.time() - queue_timer >= 3.0:  # Check every 5 seconds
+            if time.time() - queue_timer >= 3.0 and self.enable_spotify:  # Check every 5 seconds
                 print("Checking queue...", self.queue)
                 self.queue = self.spotify_manager.continue_queue(self.queue)
                 queue_timer = time.time()
@@ -257,12 +287,13 @@ class UI:
         pygame.quit()
 
 
+"""
 if __name__ == "__main__":
     pygame.init()
-    #calibration = ManualBoardCalibration()
-    #points = calibration.run()
+    calibration = ManualBoardCalibration()
+    points = calibration.run()
     points = [(0, 0), (640, 0), (640, 480), (0, 480)]
 
     ui = UI(points)
     pygame.scrap.init()
-    ui.run()
+    ui.run()"""

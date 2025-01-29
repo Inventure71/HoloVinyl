@@ -4,7 +4,8 @@ import cv2
 import shutil
 import albumentations as A
 import yaml
-from utils.find_object import process_image_with_label
+from utils.find_object import process_image_with_label_V2
+from utils.generic import convert_pascal_voc_to_yolo, draw_bounding_box
 from utils.image_utils import remove_similar_images
 from typing import Dict, List, Tuple, Union, Optional
 
@@ -67,6 +68,7 @@ def create_or_update_yolo_dataset(
         target_samples_per_class: int = 70,
         train_split: float = 0.8,
         val_split: float = 0.1,
+        debug_boundaries: bool = False,
         existing_dataset: Optional[str] = None
 ):
     """
@@ -101,8 +103,21 @@ def create_or_update_yolo_dataset(
         os.makedirs(os.path.join(dir_path, 'images'), exist_ok=True)
         os.makedirs(os.path.join(dir_path, 'labels'), exist_ok=True)
 
+    # NOTE: DEBUG ONLY CAN BE REMOVED:
+    if debug_boundaries:
+        # **Define Debug Directory Structure**
+        debug_output_directory = "custom_models/debug_images"  # You can change this path as needed
+        debug_dataset_dirs = {
+            'train': os.path.join(debug_output_directory, 'train'),
+            'val': os.path.join(debug_output_directory, 'val'),
+            'test': os.path.join(debug_output_directory, 'test')
+        }
+
+        for dir_path in debug_dataset_dirs.values():
+            os.makedirs(dir_path, exist_ok=True)
+
     # Process new classes
-    all_image_paths = []  # List of (image_path, label_data, class_id)
+    all_image_paths = []  # List of (image_path, label_data, class_id, class_name)
 
     for class_name, input_directory in class_directories.items():
         # Skip if class already exists
@@ -123,6 +138,10 @@ def create_or_update_yolo_dataset(
             class_id,
             target_samples_per_class
         )
+        # Include class_name in the tuple for debugging
+        class_image_paths = [
+            (img_path, yolo_label, class_id, class_name) for (img_path, yolo_label, class_id) in class_image_paths
+        ]
         all_image_paths.extend(class_image_paths)
 
     if not all_image_paths:
@@ -148,12 +167,13 @@ def create_or_update_yolo_dataset(
         existing_files = [f for f in os.listdir(images_dir) if f.endswith(('.jpg', '.png', '.jpeg'))]
         current_indices[split_name] = len(existing_files)
 
-    # Save new data to respective directories
+    # Save new data to respective directories and save debug copies
     for split_name, split_data in splits.items():
         start_idx = current_indices[split_name]
-        for idx, (img_path, yolo_label, class_id) in enumerate(split_data, start=start_idx):
+        for idx, (img_path, yolo_label, class_id, class_name) in enumerate(split_data, start=start_idx):
             # Copy image
-            img_filename = f"{split_name}_{idx}{os.path.splitext(img_path)[1]}"
+            img_ext = os.path.splitext(img_path)[1]
+            img_filename = f"{split_name}_{idx}{img_ext}"
             dst_img_path = os.path.join(dataset_dirs[split_name], 'images', img_filename)
             shutil.copy2(img_path, dst_img_path)
 
@@ -163,8 +183,20 @@ def create_or_update_yolo_dataset(
             with open(label_path, 'w') as f:
                 f.write(f"{class_id} {' '.join(map(str, yolo_label))}\n")
 
+            # NOTE: DEBUG ONLY CAN BE REMOVED:
+            if debug_boundaries:
+                # **Save Debug Image with Bounding Box**
+                debug_img_path = os.path.join(debug_dataset_dirs[split_name], img_filename)
+                draw_bounding_box(
+                    image_path=dst_img_path,
+                    yolo_bbox=yolo_label,
+                    class_id=class_id,
+                    class_name=class_name,
+                    output_path=debug_img_path
+                )
+
     # Clean up temporary augmented images
-    for img_path, _, _ in all_image_paths:
+    for img_path, _, _, _ in all_image_paths:
         if 'aug_' in img_path:
             os.remove(img_path)
 
@@ -180,87 +212,104 @@ def create_or_update_yolo_dataset(
 
 
 def process_class_images(
-        input_directory: str,
-        class_name: str,
-        class_id: int,
-        target_samples: int
+    input_directory: str,
+    class_name: str,
+    class_id: int,
+    target_samples: int
 ) -> List[Tuple[str, List[float], int]]:
-    """Process images for a single class, including augmentation if needed"""
+    """Process images for a single class, including augmentation if needed."""
     # Remove duplicate images
     removed = remove_similar_images(input_directory)
     print(f"Removed {len(removed)} similar images from {class_name}")
 
     # Get list of all images
-    original_images = [f for f in os.listdir(input_directory)
-                       if f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+    original_images = [
+        f for f in os.listdir(input_directory)
+        if f.lower().endswith(('.png', '.jpg', '.jpeg'))
+    ]
     n_original = len(original_images)
-
     if n_original < 1:
         raise ValueError(f"No valid images found in input directory for class {class_name}")
 
-    # Calculate augmentations needed
+    # Calculate how many augmentations are needed
     n_augmentations = max(0, target_samples - n_original)
     augmentations_per_image = n_augmentations // n_original + 1
 
-    # Define augmentations
-    transform = A.Compose([
-        A.HorizontalFlip(p=0.5),
-        A.RandomBrightnessContrast(p=0.5),
-        A.RandomRotate90(p=0.5),
-        A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.7),
-        A.GaussianBlur(p=0.3),
-        A.HueSaturationValue(p=0.5),
-    ])
+    # Define Albumentations transform with bbox_params
+    transform = A.Compose(
+        [
+            A.HorizontalFlip(p=0.5),
+            A.RandomBrightnessContrast(p=0.5),
+            A.RandomRotate90(p=0.5),
+            A.ShiftScaleRotate(shift_limit=0.05, scale_limit=0.05, rotate_limit=15, p=0.7),
+            A.GaussianBlur(p=0.3),
+            A.HueSaturationValue(p=0.5),
+        ],
+        bbox_params=A.BboxParams(
+            format='pascal_voc',
+            label_fields=['class_labels'],
+            min_visibility=0.3,
+        )
+    )
 
-    class_image_paths = []
+    class_image_paths = []  # Will store tuples of (img_path, yolo_label, class_id)
 
     for img_name in original_images:
         img_path = os.path.join(input_directory, img_name)
-        image = cv2.imread(img_path)
+        image_cv = cv2.imread(img_path)
 
-        if image is None:
+        if image_cv is None:
             print(f"Warning: Could not read image {img_path}")
             continue
 
-        # Process original image
-        corners, _ = process_image_with_label(img_path, "", label=class_name)
-        height, width = image.shape[:2]
-        yolo_label = convert_corners_to_yolo(corners, width, height)
+        # 1) Get bounding box once (in x_min, y_min, x_max, y_max)
+        x_min, y_min, x_max, y_max = process_image_with_label_V2(img_path, label=class_name)
+        # Make sure the box is within the image boundary
+        h, w = image_cv.shape[:2]
+        x_min = max(0, x_min); y_min = max(0, y_min)
+        x_max = min(w, x_max); y_max = min(h, y_max)
+
+        # 2) Append the original image (no augmentation)
+        # Convert corners to YOLO for the label
+        yolo_label = convert_pascal_voc_to_yolo(x_min, y_min, x_max, y_max, w, h)
         class_image_paths.append((img_path, yolo_label, class_id))
 
-        # Create augmentations if needed
+        # 3) Create augmentations if needed
         for i in range(augmentations_per_image):
             if len(class_image_paths) >= target_samples:
                 break
 
-            augmented = transform(image=image)
+            # Albumentations expects the bounding box in (x_min, y_min, x_max, y_max)
+            # and a list of labels that correspond to each box
+            augmented = transform(
+                image=image_cv,
+                bboxes=[(x_min, y_min, x_max, y_max)],
+                class_labels=[class_name]  # label_fields
+            )
             aug_image = augmented['image']
+            aug_bboxes = augmented['bboxes']  # List of transformed bboxes
 
+            if not aug_bboxes:
+                # In some transforms, the box can disappear (min_visibility)
+                continue
+
+            # We only have one box
+            aug_xmin, aug_ymin, aug_xmax, aug_ymax = aug_bboxes[0]
+
+            # Write augmented image to a file
             aug_path = os.path.join(input_directory, f"aug_{len(class_image_paths)}_{img_name}")
             cv2.imwrite(aug_path, aug_image)
 
-            aug_corners, _ = process_image_with_label(aug_path, "", label=class_name)
-            aug_height, aug_width = aug_image.shape[:2]
-            aug_yolo_label = convert_corners_to_yolo(aug_corners, aug_width, aug_height)
+            # Convert the bounding box to YOLO
+            aug_h, aug_w = aug_image.shape[:2]
+            aug_yolo_label = convert_pascal_voc_to_yolo(
+                aug_xmin, aug_ymin, aug_xmax, aug_ymax, aug_w, aug_h
+            )
 
+            # Add to the list
             class_image_paths.append((aug_path, aug_yolo_label, class_id))
 
     return class_image_paths
-
-
-def convert_corners_to_yolo(corners, width, height):
-    """Convert corner coordinates to YOLO format (x_center, y_center, w, h)"""
-    x_min = min(corner[0] for corner in corners)
-    y_min = min(corner[1] for corner in corners)
-    x_max = max(corner[0] for corner in corners)
-    y_max = max(corner[1] for corner in corners)
-
-    x_center = ((x_min + x_max) / 2) / width
-    y_center = ((y_min + y_max) / 2) / height
-    w = (x_max - x_min) / width
-    h = (y_max - y_min) / height
-
-    return [x_center, y_center, w, h]
 
 
 # Example usage
