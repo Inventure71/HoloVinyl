@@ -98,17 +98,18 @@ if __name__ == "__main__":
 
     enable_spotify = False
     automatic_calibration = False
+    camera_index = 4
 
 
     if automatic_calibration:
         points = None
     else:
-        calibration = ManualBoardCalibration(load_last_calibration=True)
+        calibration = ManualBoardCalibration(camera_index, load_last_calibration=True)
         points = calibration.run()
 
     #points = [(0, 0), (600, 0), (600, 600), (0, 600)]
 
 
-    ui = UI(points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
+    ui = UI(camera_index, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
     pygame.scrap.init()
     ui.run()

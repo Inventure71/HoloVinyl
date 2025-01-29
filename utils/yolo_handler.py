@@ -41,7 +41,7 @@ class YOLOHandler:
         num_workers = self.params["num_workers"]
         cache = self.params["use_cache"]
 
-        """
+
         self.model.train(
             data=data_path,
             epochs=epochs,
@@ -51,14 +51,15 @@ class YOLOHandler:
             save_dir=save_dir,
             cache=cache,  # Dramatically increases speed if set to True
             workers=num_workers,
-        )"""
+        )
+        """
         self.model.train(
             data=data_path,
             epochs=epochs,
             imgsz=img_size,
             device=self.device,
             save_dir=save_dir,
-        )
+        )"""
 
         print(f"Training completed. Results saved in: {save_dir}")
 
