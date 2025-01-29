@@ -51,7 +51,7 @@ def transform_to_square(frame, points):
         return frame
 
     # Define the desired square size
-    side_length = 600  # Define the output size of the square
+    side_length = 640  # Define the output size of the square
 
     # Get frame dimensions
     height, width = frame.shape[:2]

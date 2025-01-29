@@ -18,7 +18,7 @@ from utils.yolo_handler import YOLOHandler
 
 class UI:
     def __init__(self, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
-        self.screen = pygame.display.set_mode((1024, 600))
+        self.screen = pygame.display.set_mode((1024, 640))
         pygame.display.set_caption("UI TEST")
         self.clock = pygame.time.Clock()
         self.running = True
@@ -140,7 +140,7 @@ class UI:
 
         print("Calibration not active!")
         # Convert corners list to a NumPy array
-        self.calibration_points = np.array([(0, 0), (600, 0), (600, 600), (0, 600)], dtype=np.float32)
+        self.calibration_points = np.array([(0, 0), (640, 0), (640, 640), (0, 640)], dtype=np.float32)
         return
 
     def reload_YOLO_model(self, custom = True):

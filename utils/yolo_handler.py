@@ -1,3 +1,4 @@
+import torch
 from ultralytics import YOLO
 from typing import List, Union
 
@@ -9,8 +10,19 @@ class YOLOHandler:
         :param model_path: Path to a pretrained or retrained YOLO model.
                            If None, you'll need to load or train a model later.
         """
+        if torch.backends.mps.is_available():
+            print("Using MPS for YOLO inference.")
+            self.device = 'mps'
+        elif torch.cuda.is_available():
+            print("Using CUDA for YOLO inference.")
+            self.device = 'cuda'
+        else:
+            print("Using CPU for YOLO inference.")
+            self.device = 'cpu'
+
         if model_path:
             self.model = YOLO(model_path)  # Load an existing model
+
             print(f"Model loaded from: {model_path}")
         else:
             self.model = None
@@ -26,12 +38,15 @@ class YOLOHandler:
         :param img_size: Image size for training.
         :param save_dir: Directory to save training results.
         """
+
+
         self.model = YOLO(model_type)  # Load a base YOLO model
         self.model.train(
             data=data_path,
             epochs=epochs,
             batch=batch_size,
             imgsz=img_size,
+            device=self.device,
             save_dir=save_dir
         )
         print(f"Training completed. Results saved in: {save_dir}")
@@ -83,6 +98,7 @@ class YOLOHandler:
             source=source,
             conf=conf_threshold,
             save=save,
+            device=self.device,
             save_dir=save_dir
         )
 
@@ -125,7 +141,8 @@ class YOLOHandler:
 
         metrics = self.model.val(
             data=data_path,
-            save_dir=save_dir
+            save_dir=save_dir,
+            device=self.device
         )
         print(f"Evaluation completed. Results saved in: {save_dir}")
         return metrics

@@ -74,7 +74,7 @@ def button_clicked_train_model():
         model_type="yolo11n.pt",  # Small model
         epochs=50,
         batch_size=16,
-        img_size=600,
+        img_size=640,
         save_dir="custom_models/runs/train"
     )
     print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
