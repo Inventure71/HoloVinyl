@@ -126,7 +126,7 @@ class ArMarkerHandler:
         matrix = cv2.getPerspectiveTransform(corners, dst_pts)
         warped = cv2.warpPerspective(image, matrix, (width_out, height_out))
 
-        warped = cv2.resize(warped, (600, 600))
+        warped = cv2.resize(warped, (640, 640))
         cv2.imwrite("../../custom_models/board_warped.png", warped)
 
         return warped

@@ -6,9 +6,7 @@ import numpy as np
 import pygame
 
 from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
-from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.generic import load_mappings
-from utils.image_utils import transform_to_square
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
@@ -18,7 +16,7 @@ from utils.yolo_handler import YOLOHandler
 
 class UI:
     def __init__(self, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
-        self.screen = pygame.display.set_mode((1024, 600))
+        self.screen = pygame.display.set_mode((1024, 640))
         pygame.display.set_caption("UI TEST")
         self.clock = pygame.time.Clock()
         self.running = True
@@ -140,12 +138,12 @@ class UI:
 
         print("Calibration not active!")
         # Convert corners list to a NumPy array
-        self.calibration_points = np.array([(0, 0), (600, 0), (600, 600), (0, 600)], dtype=np.float32)
+        self.calibration_points = np.array([(0, 0), (640, 0), (640, 640), (0, 640)], dtype=np.float32)
         return
 
     def reload_YOLO_model(self, custom = True):
         if custom:
-            self.yolo_handler.load_model(model_path="custom_models/runs/detect/train3/weights/best.pt")
+            self.yolo_handler.load_model(model_path="custom_models/runs/detect/train/weights/best.pt")
 
         else:
             self.yolo_handler.load_model(model_path="yolo11n.pt")
@@ -205,7 +203,7 @@ class UI:
 
                 # Draw label and confidence
                 font = pygame.font.Font(None, 24)
-                text = font.render(f"{label} ({confidence:.2f})", True, (255, 255, 255))
+                text = font.render(f"{label} ({confidence:.2f})", True, (144, 238, 144))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
 
             self.class_consecutive_frames(detected_classes)

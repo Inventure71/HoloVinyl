@@ -37,7 +37,7 @@ def process_image_with_label_V2(image_path, label="Object"):
     return (x_min, y_min, x_max, y_max)
 
 
-def process_image_with_label(image_path, output_path, label="Object", save_image=False):
+def process_image_with_label_old(image_path, output_path, label="Object", save_image=False):
     # Load the input image
     input_image = Image.open(image_path).convert("RGBA")
 

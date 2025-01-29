@@ -8,7 +8,7 @@ from albumentations.core.transforms_interface import ImageOnlyTransform
 import numpy as np
 
 from test import process_image_with_label
-from utils.image_utils import remove_similar_images
+from utils.image_processing import remove_similar_images
 
 
 def crete_dataset_from_directory(directory, output_file, label="Object", target_samples=70):

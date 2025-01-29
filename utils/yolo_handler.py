@@ -1,5 +1,8 @@
+import torch
 from ultralytics import YOLO
 from typing import List, Union
+
+from find_parameters_for_training import find_parameters
 
 
 class YOLOHandler:
@@ -9,6 +12,10 @@ class YOLOHandler:
         :param model_path: Path to a pretrained or retrained YOLO model.
                            If None, you'll need to load or train a model later.
         """
+
+        self.params = find_parameters()
+        self.device = self.params["device"]
+
         if model_path:
             self.model = YOLO(model_path)  # Load an existing model
             print(f"Model loaded from: {model_path}")
@@ -16,7 +23,7 @@ class YOLOHandler:
             self.model = None
 
     def train_model(self, data_path: str, model_type: str = "yolov11n.pt", epochs: int = 50, batch_size: int = 16,
-                    img_size: int = 640, save_dir: str = "./custom_models/runs/train"):
+                    img_size: int = 640, save_dir: str = "custom_models/runs/train"):
         """
         Train a YOLO model on a custom dataset.
         :param data_path: Path to the data.yaml file.
@@ -27,13 +34,32 @@ class YOLOHandler:
         :param save_dir: Directory to save training results.
         """
         self.model = YOLO(model_type)  # Load a base YOLO model
+
+        # Use optimized settings
+        batch_size = self.params["batch_size"]
+        img_size = img_size
+        num_workers = self.params["num_workers"]
+        cache = self.params["use_cache"]
+
+        """
         self.model.train(
             data=data_path,
             epochs=epochs,
             batch=batch_size,
             imgsz=img_size,
-            save_dir=save_dir
+            device=self.device,
+            save_dir=save_dir,
+            cache=cache,  # Dramatically increases speed if set to True
+            workers=num_workers,
+        )"""
+        self.model.train(
+            data=data_path,
+            epochs=epochs,
+            imgsz=img_size,
+            device=self.device,
+            save_dir=save_dir,
         )
+
         print(f"Training completed. Results saved in: {save_dir}")
 
     def load_model(self, model_path: str, fallback="yolo11n.pt"):
@@ -83,6 +109,7 @@ class YOLOHandler:
             source=source,
             conf=conf_threshold,
             save=save,
+            device=self.device,
             save_dir=save_dir
         )
 
@@ -125,7 +152,8 @@ class YOLOHandler:
 
         metrics = self.model.val(
             data=data_path,
-            save_dir=save_dir
+            save_dir=save_dir,
+            device=self.device
         )
         print(f"Evaluation completed. Results saved in: {save_dir}")
         return metrics

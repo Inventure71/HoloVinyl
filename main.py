@@ -1,5 +1,6 @@
 import os
 import time
+import shutil
 
 import cv2
 import pygame
@@ -7,9 +8,10 @@ import pygame
 from UI import UI
 from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.database_handler_V3 import create_or_update_yolo_dataset
-from utils.string_utils import unsanitize_string, sanitize_string
+from utils.string_processing import unsanitize_string, sanitize_string
 
 #TODO: added sanitization of strings, removing spaces ecc. Check if it works
+#TODO: Add continuous adjustment for board when automatic mode, it could be every N frames, but be aware of possible things hiding markers
 
 """BUTTONS START"""
 def button_clicked_start_prediction():
@@ -51,11 +53,6 @@ def button_clicked_train_model():
 
     print(f"Missing classes: {new_classes_dirs}")
 
-        #new_class_dirs = {
-    #    "happy face": "raw_images/happy_face",
-    #    "plane": "raw_images/plane"
-    #}
-
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
@@ -71,16 +68,20 @@ def button_clicked_train_model():
     ui.yolo_handler.train_model(
         data_path="custom_models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
-        epochs=50,
+        epochs=50, # 50
         batch_size=16,
-        img_size=600,
+        img_size=640,
         save_dir="custom_models/runs/train"
     )
     print(f"Model training completed in {time.time() - start_time:.2f} seconds.")
 
     # TEST: manually move runs folder under custom_models
     print("Manually moving runs under custom_models")
-    os.system("mv runs custom_models")
+    if os.path.exists("custom_models/runs"):
+        shutil.rmtree("custom_models/runs")
+        time.sleep(0.1)
+
+    shutil.move("runs", "custom_models")
     print("Moved folder and completed training")
 
 def button_clicked_quit():

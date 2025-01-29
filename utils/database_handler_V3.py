@@ -4,9 +4,9 @@ import cv2
 import shutil
 import albumentations as A
 import yaml
-from utils.find_object import process_image_with_label_V2
+from utils.find_objects_and_label import process_image_with_label_V2
 from utils.generic import convert_pascal_voc_to_yolo, draw_bounding_box
-from utils.image_utils import remove_similar_images
+from utils.image_processing import remove_similar_images
 from typing import Dict, List, Tuple, Union, Optional
 
 
