@@ -23,7 +23,7 @@ class UI:
 
         self.calibration_points = points
 
-        self.webcam = cv2.VideoCapture(0)
+        self.webcam = cv2.VideoCapture(1)
 
         self.predicting = False
         self.adding_class = ""
