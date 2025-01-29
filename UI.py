@@ -35,11 +35,11 @@ class UI:
         # list of 4 buttons
         self.buttons = [
             Button(
-                x=1024-150,
-                y=120,
-                width=150,
+                x=600-50, #
+                y=0,
+                width=50,
                 height=50,
-                text="Toggle Prediction",
+                text="TP",
                 font=self.font,
                 text_color=(255, 255, 255),
                 button_color=(0, 128, 255),
@@ -47,9 +47,9 @@ class UI:
                 callback=button_clicked_start_prediction,
             ),
             Button(
-                x=1024-150,
-                y=200,
-                width=150,
+                x=1024-200,
+                y=0,
+                width=200,
                 height=50,
                 text="Add Class",
                 font=self.font,
@@ -59,9 +59,9 @@ class UI:
                 callback=button_clicked_add_class,
             ),
             Button(
-                x=1024-150,
-                y=280,
-                width=150,
+                x=1024-200,
+                y=80,
+                width=200,
                 height=50,
                 text="Train Model",
                 font=self.font,
@@ -71,13 +71,13 @@ class UI:
                 callback=button_clicked_train_model,
             ),
             Button(
-                x=1024 - 150, y=360, width=150, height=50, text="Class Mappings", font=self.font,
+                x=1024 - 200, y=160, width=200, height=50, text="Class Mappings", font=self.font,
                 text_color=(255, 255, 255), button_color=(0, 128, 255), hover_color=(0, 102, 204),
                 callback=button_clicked_open_submenu),
             Button(
-                x=1024-150,
-                y=440,
-                width=150,
+                x=1024-200,
+                y=550,
+                width=200,
                 height=50,
                 text="Quit",
                 font=self.font,
@@ -102,7 +102,7 @@ class UI:
                     callback= lambda: button_clicked_take_photo(self.frame),
                 )
 
-        self.text_field = TextField(0, 500, 400, 50, self.font, text_color=(0, 0, 0), bg_color=(255, 255, 255), border_color=(0, 0, 0))
+        self.text_field = TextField(1024-200-200, 0, 200, 50, self.font, text_color=(0, 0, 0), bg_color=(255, 255, 255), border_color=(0, 0, 0))
 
 
         self.yolo_handler = YOLOHandler(model_path="yolo11n.pt")
