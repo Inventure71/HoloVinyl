@@ -7,7 +7,7 @@ import pygame
 from UI import UI
 from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.database_handler_V3 import create_or_update_yolo_dataset
-from utils.string_utils import unsanitize_string, sanitize_string
+from utils.string_processing import unsanitize_string, sanitize_string
 
 #TODO: added sanitization of strings, removing spaces ecc. Check if it works
 

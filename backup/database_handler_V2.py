@@ -3,8 +3,8 @@ import random
 import cv2
 import shutil
 import albumentations as A
-from utils.find_object import process_image_with_label
-from utils.image_utils import remove_similar_images
+from utils.find_objects_and_label import process_image_with_label
+from utils.image_processing import remove_similar_images
 
 def create_yolo_dataset(
         input_directory,

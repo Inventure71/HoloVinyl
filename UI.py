@@ -8,7 +8,7 @@ import pygame
 from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
 from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.generic import load_mappings
-from utils.image_utils import transform_to_square
+from utils.image_processing import transform_to_square
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
