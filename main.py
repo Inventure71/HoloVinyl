@@ -5,6 +5,7 @@ import cv2
 import pygame
 
 from UI import UI
+from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.database_handler_V3 import create_or_update_yolo_dataset
 from utils.string_utils import unsanitize_string, sanitize_string
 
@@ -93,10 +94,19 @@ def button_clicked_open_submenu():
 
 if __name__ == "__main__":
     pygame.init()
-    #calibration = ManualBoardCalibration()
-    #points = calibration.run()
-    points = [(0, 0), (600, 0), (600, 600), (0, 600)]
+
     enable_spotify = False
+    automatic_calibration = False
+
+
+    if automatic_calibration:
+        points = None
+    else:
+        calibration = ManualBoardCalibration(load_last_calibration=True)
+        points = calibration.run()
+
+    #points = [(0, 0), (600, 0), (600, 600), (0, 600)]
+
 
     ui = UI(points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
     pygame.scrap.init()
