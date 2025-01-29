@@ -6,9 +6,7 @@ import numpy as np
 import pygame
 
 from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
-from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.generic import load_mappings
-from utils.image_processing import transform_to_square
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
@@ -145,7 +143,7 @@ class UI:
 
     def reload_YOLO_model(self, custom = True):
         if custom:
-            self.yolo_handler.load_model(model_path="custom_models/runs/detect/train3/weights/best.pt")
+            self.yolo_handler.load_model(model_path="custom_models/runs/detect/train/weights/best.pt")
 
         else:
             self.yolo_handler.load_model(model_path="yolo11n.pt")
@@ -205,7 +203,7 @@ class UI:
 
                 # Draw label and confidence
                 font = pygame.font.Font(None, 24)
-                text = font.render(f"{label} ({confidence:.2f})", True, (255, 255, 255))
+                text = font.render(f"{label} ({confidence:.2f})", True, (144, 238, 144))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
 
             self.class_consecutive_frames(detected_classes)

@@ -1,5 +1,6 @@
 import os
 import time
+import shutil
 
 import cv2
 import pygame
@@ -52,11 +53,6 @@ def button_clicked_train_model():
 
     print(f"Missing classes: {new_classes_dirs}")
 
-        #new_class_dirs = {
-    #    "happy face": "raw_images/happy_face",
-    #    "plane": "raw_images/plane"
-    #}
-
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
@@ -72,7 +68,7 @@ def button_clicked_train_model():
     ui.yolo_handler.train_model(
         data_path="custom_models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
-        epochs=50,
+        epochs=50, # 50
         batch_size=16,
         img_size=640,
         save_dir="custom_models/runs/train"
@@ -81,7 +77,11 @@ def button_clicked_train_model():
 
     # TEST: manually move runs folder under custom_models
     print("Manually moving runs under custom_models")
-    os.system("mv runs custom_models")
+    if os.path.exists("custom_models/runs"):
+        shutil.rmtree("custom_models/runs")
+        time.sleep(0.1)
+
+    shutil.move("runs", "custom_models")
     print("Moved folder and completed training")
 
 def button_clicked_quit():
