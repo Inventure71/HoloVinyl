@@ -113,10 +113,10 @@ class YOLOHandler:
             conf=conf_threshold,
             save=save,
             device=self.device,
-            save_dir=save_dir
+            #save_dir=save_dir
         )
 
-        print(f"Predictions completed. Results saved to: {save_dir}" if save else "Predictions completed.")
+        #print(f"Predictions completed. Results saved to: {save_dir}" if save else "Predictions completed.")
         #print("Results structure:", results)
 
         all_predictions = []
