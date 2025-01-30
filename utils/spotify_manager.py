@@ -7,6 +7,9 @@ from spotipy.oauth2 import SpotifyOAuth
 
 class Spotify_Manager:
     def __init__(self):
+        self.username = "" # add here
+        self.CLIENT_ID = "" # add here
+        self.CLIENT_SECRET = "" # add here
         self.REDIRECT_URI = 'http://google.com/callback/'
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
