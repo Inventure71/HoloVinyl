@@ -1,8 +1,7 @@
-import torch
 from ultralytics import YOLO
 from typing import List, Union
 
-from find_parameters_for_training import find_parameters
+from utils.find_parameters_for_training import find_parameters
 
 
 class YOLOHandler:
@@ -51,6 +50,7 @@ class YOLOHandler:
             save_dir=save_dir,
             cache=cache,  # Dramatically increases speed if set to True
             workers=num_workers,
+            patience=10  # Stops training if no improvement after 10 epochs
         )
         """
         self.model.train(
