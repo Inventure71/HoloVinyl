@@ -50,7 +50,7 @@ class YOLOHandler:
             save_dir=save_dir,
             cache=cache,  # Dramatically increases speed if set to True
             workers=num_workers,
-            patience=10  # Stops training if no improvement after 10 epochs
+            patience=6  # Stops training if no improvement after 10 epochs
         )
         """
         self.model.train(
