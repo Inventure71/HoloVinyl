@@ -74,7 +74,7 @@ def button_clicked_train_model():
     ui.yolo_handler.train_model(
         data_path="custom_models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
-        epochs=25, # 50
+        epochs=20, # 50
         batch_size=16,
         img_size=640,
         save_dir="custom_models/runs/train"
