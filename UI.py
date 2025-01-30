@@ -118,6 +118,8 @@ class UI:
 
         self.submenu = Submenu(self.screen, self.font, self.yolo_handler)
 
+        self.training_in_progress = False
+
         self.mappings = load_mappings() #TODO update mappings once submenu is closed
         self.queue = []  # Queue for classes
         self.class_frame_count = {}  # Tracks consecutive frames for each class
