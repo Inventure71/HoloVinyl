@@ -56,7 +56,7 @@ def button_clicked_train_model():
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
-        target_samples_per_class=50,
+        target_samples_per_class=100,
         debug_boundaries=False,
         #existing_dataset="custom_models/yolo_dataset"
     )
@@ -68,7 +68,7 @@ def button_clicked_train_model():
     ui.yolo_handler.train_model(
         data_path="custom_models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
-        epochs=30, # 50
+        epochs=25, # 50
         batch_size=16,
         img_size=640,
         save_dir="custom_models/runs/train"

@@ -235,6 +235,35 @@ def process_class_images(
     n_augmentations = max(0, target_samples - n_original)
     augmentations_per_image = n_augmentations // n_original + 1
 
+    transform = A.Compose(
+        [
+            # Rotation & Position Adjustments
+            A.Rotate(limit=180, p=1.0),  # Full rotation in all directions
+            A.ShiftScaleRotate(shift_limit=0.1, scale_limit=0.1, rotate_limit=180, p=0.9),
+            # Small position and size variation
+
+            # Lighting Adjustments
+            A.RandomBrightnessContrast(brightness_limit=0.2, contrast_limit=0.2, p=0.5),
+            # Simulates lighting variations
+            A.RandomGamma(gamma_limit=(80, 120), p=0.4),  # Handles under/over-exposed conditions
+
+            # Noise & Occlusion (Corrected)
+            A.GaussNoise(std_range=(0.1, 0.2), p=0.3),  # Simulates camera noise
+            A.CoarseDropout(
+                num_holes_range=(1, 3),  # Drops 1-3 regions
+                hole_height_range=(10, 20),  # Each hole is between 10-20 pixels high
+                hole_width_range=(10, 20),  # Each hole is between 10-20 pixels wide
+                fill="random_uniform",  # Each hole gets a single random color
+                p=0.3
+            ),  # Simulates occlusions
+        ],
+        bbox_params=A.BboxParams(
+            format='pascal_voc',
+            label_fields=['class_labels'],
+            min_visibility=0.5,  # Ensure bounding boxes remain valid
+        )
+    )
+    """
     # Define Albumentations transform with bbox_params
     transform = A.Compose(
         [
@@ -250,7 +279,7 @@ def process_class_images(
             label_fields=['class_labels'],
             min_visibility=0.3,
         )
-    )
+    )"""
 
     class_image_paths = []  # Will store tuples of (img_path, yolo_label, class_id)
 
