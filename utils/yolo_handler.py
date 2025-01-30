@@ -73,7 +73,7 @@ class YOLOHandler:
             self.model = YOLO(model_path)
             print(f"Model loaded from: {model_path}")
         except FileNotFoundError:
-            raise f"Model file not found: {model_path}"
+            #raise f"Model file not found: {model_path}"
             print(f"Model file not found: {model_path}")
             self.model = YOLO(fallback)
 
