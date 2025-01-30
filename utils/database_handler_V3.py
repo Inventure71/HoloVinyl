@@ -82,7 +82,7 @@ def create_or_update_yolo_dataset(
         val_split: Proportion of data for validation
         existing_dataset: Path to existing dataset to update (optional)
     """
-    # Initialize or load existing datase
+    # Initialize or load existing dataset
     if existing_dataset and os.path.exists(existing_dataset):
         print(f"Loading existing dataset from {existing_dataset}")
         dataset = YOLODataset(existing_dataset)
