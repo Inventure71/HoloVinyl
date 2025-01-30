@@ -62,7 +62,7 @@ def button_clicked_train_model():
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
-        target_samples_per_class=80,
+        target_samples_per_class=50,
         debug_boundaries=False,
         #existing_dataset="custom_models/yolo_dataset"
     )
@@ -98,7 +98,7 @@ if __name__ == "__main__":
 
     enable_spotify = False
     automatic_calibration = False
-    camera_index = 4
+    camera_index = 1
 
 
     if automatic_calibration:
