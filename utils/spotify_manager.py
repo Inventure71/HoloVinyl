@@ -8,14 +8,14 @@ from spotipy.oauth2 import SpotifyOAuth
 class Spotify_Manager:
     def __init__(self):
 
+        # File to store user's token
+        self.TOKEN_FILE = "variables/spotify_token.json"
+        self.CONFIG_FILE = "variables/spotify_config.json"
+
         self.username, self.CLIENT_ID, self.CLIENT_SECRET = self.load_credentials()
 
         self.REDIRECT_URI = 'http://google.com/callback/'
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
-
-        # File to store user's token
-        self.TOKEN_FILE = "variables/spotify_token.json"
-        self.CONFIG_FILE = "variables/spotify_config.json"
 
         self.last_url = ""
         self.currently_playing_url = ""
