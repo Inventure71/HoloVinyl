@@ -10,6 +10,12 @@ class ArMarkerHandler:
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         self.aruco_params = cv2.aruco.DetectorParameters()
 
+        self.original_size_wc = None
+        self.matrix_wa = None
+        self.matrix_wc = None
+
+        self.warped_corners = None
+
     def create_board(self, output_path="custom_models/board.png", margin=50):
         """Creates an A4-sized board with four ArUco markers forming a perfect square,
         with the left-side markers fixed near the A4 corners and the right-side markers forming a square.
@@ -126,6 +132,9 @@ class ArMarkerHandler:
         matrix = cv2.getPerspectiveTransform(corners, dst_pts)
         warped = cv2.warpPerspective(image, matrix, (width_out, height_out))
 
+        self.original_size_wc = (width_out, height_out)
+        self.matrix_wc = matrix
+
         warped = cv2.resize(warped, (640, 640))
         cv2.imwrite("../../custom_models/markers/board_warped.png", warped)
 
@@ -136,7 +145,7 @@ class ArMarkerHandler:
     def warp_and_adjust(self, image, corners=None):
         if corners is None:
             print("No corners provided! Run detect_corners() first.")
-            return None
+            return None, None
 
         corners = np.array(corners, dtype=np.float32)
 
@@ -161,6 +170,8 @@ class ArMarkerHandler:
         # Compute the perspective transform matrix
         matrix = cv2.getPerspectiveTransform(corners, dst_pts)
 
+        self.matrix_wa = matrix
+
         # Transform the original image's corners to find output bounds
         h, w = image.shape[:2]
         orig_corners = np.array([[0, 0], [w, 0], [0, h], [w, h]], dtype=np.float32)
@@ -179,8 +190,15 @@ class ArMarkerHandler:
         # Warp the image with the correct output size
         warped = cv2.warpPerspective(image, adjusted_matrix, (output_width, output_height))
 
+        # Transform the original corners to the warped image coordinates
+        self.warped_corners = cv2.perspectiveTransform(corners.reshape(1, -1, 2), adjusted_matrix).reshape(-1, 2)
+
         cv2.imwrite("../../custom_models/markers/board_warped.png", warped)
         return warped
+
+    def map_click_to_cropped_space(self, click_point):
+
+        None
 
 
 

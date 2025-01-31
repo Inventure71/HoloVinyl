@@ -13,6 +13,8 @@ from utils.string_processing import unsanitize_string, sanitize_string
 # TODO: added sanitization of strings, removing spaces ecc. Check if it works
 # TODO: Add continuous adjustment for board when automatic mode, it could be every N frames, but be aware of possible things hiding markers
 # TODO: Use local web interface if I want to set it up on raspberryPi pi
+# TODO: in automactic calibration, make the functions more efficent by calcuoating once the various variables that don't change (almost all of them)
+
 
 """BUTTONS START"""
 def button_clicked_start_prediction():
@@ -99,7 +101,7 @@ if __name__ == "__main__":
 
     enable_spotify = False
     automatic_calibration = False
-    load_last_calibration = False
+    load_last_calibration = True
 
     camera_index = 0
 

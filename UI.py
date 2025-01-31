@@ -149,6 +149,17 @@ class UI:
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
 
+        # When processing clicks:
+        cropped_point =  self.marker_handler.map_click_to_cropped_space(
+            click_point=mouse_position
+        )
+
+        if cropped_point is not None:
+            print(f"Clicked on cropped space: {cropped_point}")
+        else:
+            print("Clicked outside of cropped space")
+
+        """
         # check if mouse is clicking one of user added buttons
         # find if point is in circle
         for button in self.draw_buttons:
@@ -156,7 +167,7 @@ class UI:
             #if (mouse_position[0] - button.rect.x) ** 2 + (mouse_position[1] - button.rect.y) ** 2 <= self.radius_of_click ** 2:
             print(f"Called button {button.text}")
             button.callback()
-            return True
+            return True"""
 
         #self.hand_tracking_manager.is_pinching
 
