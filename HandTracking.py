@@ -58,7 +58,6 @@ class HandTrackingManager:
     def identify_pinch_gesture(self, latest_result, frame): #
         """Identifies a pinch gesture when the distance shrinks from >100 to <30 within N frames."""
         if not latest_result.hand_landmarks:
-            print("ERROR NO DATA")
             return False
 
         height, width, _ = frame.shape
