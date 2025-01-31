@@ -1,4 +1,5 @@
 import os
+import random
 import time
 
 import cv2
@@ -139,7 +140,7 @@ class UI:
 
         """MUSIC RELATED"""
         self.mappings = load_mappings()  # TODO update mappings once submenu is closed
-        self.queue = []  # Queue for classes
+        self.active_sources = []
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
         self.count_in_a_row = {}
@@ -199,56 +200,24 @@ class UI:
         frame = pygame.surfarray.make_surface(frame)
         self.screen.blit(frame, (0, 0))
 
-    def class_consecutive_frames(self, detected_classes):
-
-        self.active_sources = []
-
+    def detect_active_sources(self, detected_classes):
         for cls in detected_classes:
             self.count_in_a_row[cls] = dict.get(cls, 0) + 1
             if self.count_in_a_row[cls] >= self.threshold_frames and cls not in self.active_sources:
-                self.active_sources.append(cls)
+                self.active_sources.append(cls) # CHANGE THIS TO THE ALBUM / MUSIC URL
                 print(f"Added to active sources: {cls}")
 
         for cls in list(self.count_in_a_row.keys()):
             if cls not in detected_classes:
                 self.count_in_a_row[cls] -= 1
                 if self.count_in_a_row[cls] <= 0:
-                    print("Song not seen for a while, removing from active songs")
+                    print("Item not seen for a while")
                     del self.count_in_a_row[cls]
                     if cls in self.active_sources:
                         self.active_sources.remove(cls)
-                    print(f"Removed from queue: {cls}")
+                        print(f"Removed from active sources: {cls}")
 
-
-
-        # Update class frame counts
-        for cls in detected_classes:
-            self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
-            if self.class_frame_count[cls] >= self.threshold_frames and cls not in self.queue:
-                # Add to queue if seen for N frames
-                item = self.mappings.get(cls, '')
-                if item != '' and item not in self.queue:
-                    self.queue.append(item)
-                    print(f"Added to queue: {item}")
-                else:
-                    print("Class empty so skipping OR already in queue")
-
-
-        # Remove classes not detected in this frame
-        for cls in list(self.class_frame_count.keys()):
-            if cls not in detected_classes:
-                self.class_frame_count[cls] -= 1
-                if self.class_frame_count[cls] <= 0 and self.mappings.get(cls, cls) in self.queue:
-                    # Remove from queue when not seen anymore
-                    self.queue.remove(self.mappings.get(cls, ''))
-                    del self.class_frame_count[cls]
-                    print(f"Removed from queue: {self.mappings.get(cls, '')}")
-
-
-    # Trigger this when queue is empty or when object is removed from view for more than a second
-    def next_song(self):
-        if len(self.queue) <= 0:
-            print("Queue is empty")
+        self.spotify_manager.active_sources = self.active_sources
 
     def process_frame(self, frame):
         """
@@ -277,12 +246,11 @@ class UI:
                 text = font.render(f"{label} ({confidence:.2f})", True, (144, 238, 144))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
 
-            self.class_consecutive_frames(detected_classes)
+            self.detect_active_sources(detected_classes)
         except Exception as e:
             print("Error while processing predictions:", e)
 
     def run(self):
-        queue_timer = time.time()
         frame_timestamp_ms = 0
         while self.running:
             self.screen.fill((0,0,0))
@@ -352,13 +320,6 @@ class UI:
 
                 # Draw the text field
                 self.text_field.draw(self.screen)
-
-            """SPOTIFY"""
-            # Process the queue every 5 seconds
-            if time.time() - queue_timer >= 3.0 and self.enable_spotify:  # Check every 5 seconds
-                print("Checking queue...", self.queue)
-                self.queue = self.spotify_manager.continue_queue(self.queue)
-                queue_timer = time.time()
 
             self.clock.tick(60)
             pygame.display.flip()
