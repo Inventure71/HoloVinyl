@@ -138,38 +138,48 @@ class ArMarkerHandler:
             print("No corners provided! Run detect_corners() first.")
             return None
 
-        # Ensure corners is a NumPy float32 array
         corners = np.array(corners, dtype=np.float32)
 
-        # Get frame size
-        height, width = image.shape[:2]
+        # Calculate width and height based on corner distances
+        top_left, top_right, bottom_left, bottom_right = corners
+        width_top = np.linalg.norm(top_right - top_left)
+        width_bottom = np.linalg.norm(bottom_right - bottom_left)
+        width = int((width_top + width_bottom) / 2)
 
-        # Get bounding box of the detected corners
-        x_min, y_min = np.min(corners, axis=0)
-        x_max, y_max = np.max(corners, axis=0)
+        height_left = np.linalg.norm(bottom_left - top_left)
+        height_right = np.linalg.norm(bottom_right - top_right)
+        height = int((height_left + height_right) / 2)
 
-        # Calculate the largest possible rectangle without going out of bounds
-        width_out = min(int(x_max - x_min), width)
-        height_out = min(int(y_max - y_min), height)
-
-        # Define destination points for warping
+        # Destination points based on calculated width and height
         dst_pts = np.array([
-            [x_min, y_min],  # Top-left
-            [x_min + width_out, y_min],  # Top-right
-            [x_min, y_min + height_out],  # Bottom-left
-            [x_min + width_out, y_min + height_out]  # Bottom-right
+            [0, 0],
+            [width, 0],
+            [0, height],
+            [width, height]
         ], dtype=np.float32)
 
-        # Compute perspective transform
+        # Compute the perspective transform matrix
         matrix = cv2.getPerspectiveTransform(corners, dst_pts)
-        warped = cv2.warpPerspective(image, matrix, (width, height))
 
-        # Resize for uniformity (optional)
-        warped = cv2.resize(warped, (640, 640))
+        # Transform the original image's corners to find output bounds
+        h, w = image.shape[:2]
+        orig_corners = np.array([[0, 0], [w, 0], [0, h], [w, h]], dtype=np.float32)
+        transformed_corners = cv2.perspectiveTransform(orig_corners.reshape(1, -1, 2), matrix).reshape(-1, 2)
 
-        # Save the adjusted warped image
-        cv2.imwrite("../../custom_models/markers/board_warped_adjusted.png", warped)
+        # Calculate bounding box of transformed corners
+        min_x, min_y = np.min(transformed_corners, axis=0)
+        max_x, max_y = np.max(transformed_corners, axis=0)
+        output_width = int(np.ceil(max_x - min_x))
+        output_height = int(np.ceil(max_y - min_y))
 
+        # Adjust the homography matrix to shift points into positive coordinates
+        translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]], dtype=np.float32)
+        adjusted_matrix = translation @ matrix
+
+        # Warp the image with the correct output size
+        warped = cv2.warpPerspective(image, adjusted_matrix, (output_width, output_height))
+
+        cv2.imwrite("../../custom_models/markers/board_warped.png", warped)
         return warped
 
 """

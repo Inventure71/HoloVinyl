@@ -239,6 +239,8 @@ class UI:
 
             ret, frame = self.webcam.read()
 
+            # TODO: check if i can just crop frame_temp to 600*600 instead of running warp and crop
+
             # new version
             frame_temp = self.marker_handler.warp_and_adjust(frame.copy(), corners=self.calibration_points)
             self.hand_tracking_manager.analyze_frame(frame_temp, frame_timestamp_ms)
