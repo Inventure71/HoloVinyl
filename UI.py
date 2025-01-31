@@ -121,11 +121,6 @@ class UI:
 
         self.training_in_progress = False
 
-        self.mappings = load_mappings() #TODO update mappings once submenu is closed
-        self.queue = []  # Queue for classes
-        self.class_frame_count = {}  # Tracks consecutive frames for each class
-        self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
-
         self.hand_tracking_manager = HandTrackingManager(callback_function=self.user_pinched)
         self.radius_of_click = 50
         self.draw_buttons = [
@@ -142,8 +137,13 @@ class UI:
                 callback=lambda: button_clicked_start_prediction(),
             )]
 
-        # variable to check if i should activate it
-        self.enable_spotify = enable_spotify
+        """MUSIC RELATED"""
+        self.mappings = load_mappings()  # TODO update mappings once submenu is closed
+        self.queue = []  # Queue for classes
+        self.class_frame_count = {}  # Tracks consecutive frames for each class
+        self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
+        self.count_in_a_row = {}
+        self.enable_spotify = enable_spotify # variable to check if i should activate it
         if self.enable_spotify:
             self.spotify_manager = Spotify_Manager()
 
@@ -200,6 +200,27 @@ class UI:
         self.screen.blit(frame, (0, 0))
 
     def class_consecutive_frames(self, detected_classes):
+
+        self.active_sources = []
+
+        for cls in detected_classes:
+            self.count_in_a_row[cls] = dict.get(cls, 0) + 1
+            if self.count_in_a_row[cls] >= self.threshold_frames and cls not in self.active_sources:
+                self.active_sources.append(cls)
+                print(f"Added to active sources: {cls}")
+
+        for cls in list(self.count_in_a_row.keys()):
+            if cls not in detected_classes:
+                self.count_in_a_row[cls] -= 1
+                if self.count_in_a_row[cls] <= 0:
+                    print("Song not seen for a while, removing from active songs")
+                    del self.count_in_a_row[cls]
+                    if cls in self.active_sources:
+                        self.active_sources.remove(cls)
+                    print(f"Removed from queue: {cls}")
+
+
+
         # Update class frame counts
         for cls in detected_classes:
             self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
@@ -222,6 +243,12 @@ class UI:
                     self.queue.remove(self.mappings.get(cls, ''))
                     del self.class_frame_count[cls]
                     print(f"Removed from queue: {self.mappings.get(cls, '')}")
+
+
+    # Trigger this when queue is empty or when object is removed from view for more than a second
+    def next_song(self):
+        if len(self.queue) <= 0:
+            print("Queue is empty")
 
     def process_frame(self, frame):
         """
