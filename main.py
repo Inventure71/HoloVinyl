@@ -98,15 +98,15 @@ if __name__ == "__main__":
     pygame.init()
 
     enable_spotify = False
-    automatic_calibration = True
+    automatic_calibration = False
+    load_last_calibration = True
 
-    camera_index = 1
-
+    camera_index = 0
 
     if automatic_calibration:
         points = None
     else:
-        calibration = ManualBoardCalibration(camera_index, load_last_calibration=True)
+        calibration = ManualBoardCalibration(camera_index, load_last_calibration=load_last_calibration)
         points = calibration.run()
 
     #points = [(0, 0), (600, 0), (600, 600), (0, 600)]
