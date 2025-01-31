@@ -240,8 +240,8 @@ class UI:
             ret, frame = self.webcam.read()
 
             # new version
-            frame_temp = self.marker_handler.warp_and_adjust(frame, corners=self.calibration_points)
-            self.hand_tracking_manager.analyze_frame(frame, frame_timestamp_ms)
+            frame_temp = self.marker_handler.warp_and_adjust(frame.copy(), corners=self.calibration_points)
+            self.hand_tracking_manager.analyze_frame(frame_temp, frame_timestamp_ms)
             frame_timestamp_ms += 1
 
             frame = self.marker_handler.warp_and_crop_board(frame, corners=self.calibration_points, is_for_frame=True)

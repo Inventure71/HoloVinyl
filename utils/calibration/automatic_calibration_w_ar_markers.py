@@ -138,28 +138,37 @@ class ArMarkerHandler:
             print("No corners provided! Run detect_corners() first.")
             return None
 
-        # Convert to NumPy float32 array
+        # Ensure corners is a NumPy float32 array
         corners = np.array(corners, dtype=np.float32)
 
-        # Get input image dimensions
+        # Get frame size
         height, width = image.shape[:2]
 
-        # Compute a transformation matrix to align markers without cropping
+        # Get bounding box of the detected corners
+        x_min, y_min = np.min(corners, axis=0)
+        x_max, y_max = np.max(corners, axis=0)
+
+        # Calculate the largest possible rectangle without going out of bounds
+        width_out = min(int(x_max - x_min), width)
+        height_out = min(int(y_max - y_min), height)
+
+        # Define destination points for warping
         dst_pts = np.array([
-            [100, 100],  # Move top-left marker slightly inward
-            [width - 100, 100],  # Move top-right marker slightly inward
-            [100, height - 100],  # Move bottom-left marker slightly inward
-            [width - 100, height - 100]  # Move bottom-right marker slightly inward
+            [x_min, y_min],  # Top-left
+            [x_min + width_out, y_min],  # Top-right
+            [x_min, y_min + height_out],  # Bottom-left
+            [x_min + width_out, y_min + height_out]  # Bottom-right
         ], dtype=np.float32)
 
-        # Compute perspective transformation matrix
+        # Compute perspective transform
         matrix = cv2.getPerspectiveTransform(corners, dst_pts)
-
-        # Apply warping but keep the full image dimensions
         warped = cv2.warpPerspective(image, matrix, (width, height))
 
-        # Save or return the adjusted image
-        cv2.imwrite("../../custom_models/markers/board_warped_full.png", warped)
+        # Resize for uniformity (optional)
+        warped = cv2.resize(warped, (640, 640))
+
+        # Save the adjusted warped image
+        cv2.imwrite("../../custom_models/markers/board_warped_adjusted.png", warped)
 
         return warped
 

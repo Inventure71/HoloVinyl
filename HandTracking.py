@@ -133,7 +133,6 @@ class HandTrackingManager:
         self.latest_result = result  # Store latest result for visualization
 
 
-
 if __name__ == "__main__":
     hand_tracking_manager = HandTrackingManager()
     webcam = cv2.VideoCapture(0)
