@@ -21,6 +21,9 @@ class HandTrackingManager:
         self.model_path = 'custom_models/hand_landmarker.task'
         self.touch_margin = 10 # radius of the circle to click, with single point would be ass
 
+
+        self.mouse_position = (0,0)
+
         # Set up the hand landmark detector
         options = HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=self.model_path),
@@ -63,8 +66,10 @@ class HandTrackingManager:
 
         start_point = (int(hand[4].x * width), int(hand[4].y * height))
         end_point = (int(hand[8].x * width), int(hand[8].y * height))
+        mid_point = (int((hand[4].x + hand[8].x) * width / 2), int((hand[4].y + hand[8].y) * height / 2))
         last_distance = math.sqrt((end_point[0] - start_point[0]) ** 2 + (end_point[1] - start_point[1]) ** 2)
-        length = "Distance between index and thumb " + str(last_distance)
+
+        self.mouse_position = mid_point
 
         self.frame_distances.append(last_distance)
         if len(self.frame_distances) > self.N:
@@ -72,12 +77,11 @@ class HandTrackingManager:
 
         if last_distance <=  self.PINCH_THRESHOLD:
             if self.is_pinching:
-                print("Hand still pinching")
+                print("Hand still pinching", self.mouse_position)
             else:
                 print("Hand closed")
             for old_distance in self.frame_distances:
                 if old_distance >=  self.SEPARATION_THRESHOLD:
-                    self.started_pinching(hand, last_distance)
                     self.is_pinching = True
                     self.frame_distances = []
                     return True
@@ -129,12 +133,6 @@ class HandTrackingManager:
         """Callback function to process results."""
         self.latest_result = result  # Store latest result for visualization
 
-    def started_pinching(self, hand, last_distance):
-        print(f"Hand started pinching with distance {last_distance}")
-
-
-
-        #coordinates_of_touch = math.sqrt(hand[8]-hand[4]
 
 
 if __name__ == "__main__":

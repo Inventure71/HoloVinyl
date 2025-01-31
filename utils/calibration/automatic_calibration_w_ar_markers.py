@@ -131,6 +131,37 @@ class ArMarkerHandler:
 
         return warped
 
+    # REDUNDANT FUNCTION
+    # TODO: Remove this function and implement in one above
+    def warp_and_adjust(self, image, corners=None):
+        if corners is None:
+            print("No corners provided! Run detect_corners() first.")
+            return None
+
+        # Convert to NumPy float32 array
+        corners = np.array(corners, dtype=np.float32)
+
+        # Get input image dimensions
+        height, width = image.shape[:2]
+
+        # Compute a transformation matrix to align markers without cropping
+        dst_pts = np.array([
+            [100, 100],  # Move top-left marker slightly inward
+            [width - 100, 100],  # Move top-right marker slightly inward
+            [100, height - 100],  # Move bottom-left marker slightly inward
+            [width - 100, height - 100]  # Move bottom-right marker slightly inward
+        ], dtype=np.float32)
+
+        # Compute perspective transformation matrix
+        matrix = cv2.getPerspectiveTransform(corners, dst_pts)
+
+        # Apply warping but keep the full image dimensions
+        warped = cv2.warpPerspective(image, matrix, (width, height))
+
+        # Save or return the adjusted image
+        cv2.imwrite("../../custom_models/markers/board_warped_full.png", warped)
+
+        return warped
 
 """
 # Example Usage

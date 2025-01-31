@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import pygame
 
+from HandTracking import HandTrackingManager
 from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
 from utils.generic import load_mappings
 from utils.pygame_utils.Button import Button
@@ -125,6 +126,9 @@ class UI:
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
 
+        self.hand_tracking_manager = HandTrackingManager()
+
+
         # variable to check if i should activate it
         self.enable_spotify = enable_spotify
         if self.enable_spotify:
@@ -214,6 +218,7 @@ class UI:
 
     def run(self):
         queue_timer = time.time()
+        frame_timestamp_ms = 0
         while self.running:
             self.screen.fill((0,0,0))
             for event in pygame.event.get():
@@ -235,8 +240,13 @@ class UI:
             ret, frame = self.webcam.read()
 
             # new version
+            frame_temp = self.marker_handler.warp_and_adjust(frame, corners=self.calibration_points)
+            self.hand_tracking_manager.analyze_frame(frame, frame_timestamp_ms)
+            frame_timestamp_ms += 1
+
             frame = self.marker_handler.warp_and_crop_board(frame, corners=self.calibration_points, is_for_frame=True)
             #frame = transform_to_square(frame, self.calibration_points)
+
 
             self.frame = frame
             #frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
