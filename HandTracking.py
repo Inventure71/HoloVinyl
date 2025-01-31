@@ -15,10 +15,11 @@ class HandTrackingManager:
         self.is_pinching = False
         self.latest_result = None
         self.frame_distances = []
-        self.N = 10
+        self.N = 8
         self.PINCH_THRESHOLD = 50
         self.SEPARATION_THRESHOLD = 100
         self.model_path = 'custom_models/hand_landmarker.task'
+        self.touch_margin = 10 # radius of the circle to click, with single point would be ass
 
         # Set up the hand landmark detector
         options = HandLandmarkerOptions(
@@ -40,18 +41,43 @@ class HandTrackingManager:
 
         # Draw landmarks if detection has results
         if self.latest_result is not None:
+
+            if self.identify_pinch_gesture(self.latest_result, frame):
+                print("Pinch Detected!")
+                cv2.putText(frame, "Pinch Detected!", (10, 100),
+                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+
             frame = self.draw_landmarks(frame, self.latest_result)
 
         # Display the frame
         cv2.imshow("Hand Tracking", frame)
 
-    def identify_pinch_gesture(self, last_distance):
+    def identify_pinch_gesture(self, latest_result, frame): #
         """Identifies a pinch gesture when the distance shrinks from >100 to <30 within N frames."""
+        if not latest_result.hand_landmarks:
+            print("ERROR NO DATA")
+            return False
+
+        height, width, _ = frame.shape
+        hand = latest_result.hand_landmarks[0]
+
+        start_point = (int(hand[4].x * width), int(hand[4].y * height))
+        end_point = (int(hand[8].x * width), int(hand[8].y * height))
+        last_distance = math.sqrt((end_point[0] - start_point[0]) ** 2 + (end_point[1] - start_point[1]) ** 2)
+        length = "Distance between index and thumb " + str(last_distance)
+
+        self.frame_distances.append(last_distance)
+        if len(self.frame_distances) > self.N:
+            self.frame_distances.pop(0)  # Keep only last N frames
+
         if last_distance <=  self.PINCH_THRESHOLD:
-            print("Hand closed")
+            if self.is_pinching:
+                print("Hand still pinching")
+            else:
+                print("Hand closed")
             for old_distance in self.frame_distances:
                 if old_distance >=  self.SEPARATION_THRESHOLD:
-                    print("Hand was open so now is pinching ")
+                    self.started_pinching(hand, last_distance)
                     self.is_pinching = True
                     self.frame_distances = []
                     return True
@@ -97,16 +123,18 @@ class HandTrackingManager:
             cv2.putText(frame, length, (0, 50),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 1, cv2.LINE_AA)
 
-            if self.identify_pinch_gesture(distance):
-                print("Pinch Detected!")
-                cv2.putText(frame, "Pinch Detected!", (10, 100),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
-
         return frame
 
     def print_result(self, result: HandLandmarkerResult, output_image, timestamp_ms: int):
         """Callback function to process results."""
         self.latest_result = result  # Store latest result for visualization
+
+    def started_pinching(self, hand, last_distance):
+        print(f"Hand started pinching with distance {last_distance}")
+
+
+
+        #coordinates_of_touch = math.sqrt(hand[8]-hand[4]
 
 
 if __name__ == "__main__":
