@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 class ManualBoardCalibration:
-    def __init__(self, load_last_calibration=True):
+    def __init__(self, camera, load_last_calibration=True):
         self.calibration_file = "variables/calibration.npy"
         if load_last_calibration:
             self.points = self.load_calibration()
@@ -12,11 +12,11 @@ class ManualBoardCalibration:
                 print(self.points)
                 self.calibrated = True
             else:
-                self.capture = cv2.VideoCapture(1)
+                self.capture = cv2.VideoCapture(camera)
                 self.points = []
                 self.calibrated = False
         else:
-            self.capture = cv2.VideoCapture(1)
+            self.capture = cv2.VideoCapture(camera)
             self.points = []  # Stores manually selected points
             self.calibrated = False
 

@@ -56,7 +56,7 @@ def button_clicked_train_model():
     create_or_update_yolo_dataset(
         class_directories=new_classes_dirs,
         output_directory="custom_models/yolo_dataset",
-        target_samples_per_class=50,
+        target_samples_per_class=100,
         debug_boundaries=False,
         #existing_dataset="custom_models/yolo_dataset"
     )
@@ -68,7 +68,7 @@ def button_clicked_train_model():
     ui.yolo_handler.train_model(
         data_path="custom_models/yolo_dataset/dataset.yaml",
         model_type="yolo11n.pt",  # Small model
-        epochs=50, # 50
+        epochs=25, # 50
         batch_size=16,
         img_size=640,
         save_dir="custom_models/runs/train"
@@ -97,18 +97,20 @@ if __name__ == "__main__":
     pygame.init()
 
     enable_spotify = False
-    automatic_calibration = False
+    automatic_calibration = True
+
+    camera_index = 1
 
 
     if automatic_calibration:
         points = None
     else:
-        calibration = ManualBoardCalibration(load_last_calibration=True)
+        calibration = ManualBoardCalibration(camera_index, load_last_calibration=True)
         points = calibration.run()
 
     #points = [(0, 0), (600, 0), (600, 600), (0, 600)]
 
 
-    ui = UI(points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
+    ui = UI(camera_index, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo)
     pygame.scrap.init()
     ui.run()

@@ -15,13 +15,13 @@ from utils.yolo_handler import YOLOHandler
 
 
 class UI:
-    def __init__(self, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
+    def __init__(self, camera, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
         self.screen = pygame.display.set_mode((1024, 640))
         pygame.display.set_caption("UI TEST")
         self.clock = pygame.time.Clock()
         self.running = True
 
-        self.webcam = cv2.VideoCapture(1)
+        self.webcam = cv2.VideoCapture(camera)
         _, self.frame = self.webcam.read()
 
         self.calibration_active = True if points is None else False
@@ -117,6 +117,8 @@ class UI:
         self.reload_YOLO_model()
 
         self.submenu = Submenu(self.screen, self.font, self.yolo_handler)
+
+        self.training_in_progress = False
 
         self.mappings = load_mappings() #TODO update mappings once submenu is closed
         self.queue = []  # Queue for classes

@@ -1,7 +1,62 @@
-import rembg
-import numpy as np
-from PIL import Image, ImageDraw
 import cv2
+import numpy as np
+import rembg
+from PIL import Image
+from PIL import ImageDraw
+
+
+def process_image_with_label_V3(image_path, label="Object"):
+    """
+    Returns bounding box as (x_min, y_min, x_max, y_max) in absolute pixel coordinates.
+    """
+    # Load the input image
+    input_image = Image.open(image_path).convert("RGBA")
+
+    # Remove background using rembg
+    output_array = rembg.remove(np.array(input_image))
+
+    # Create a binary mask from the alpha channel
+    alpha_mask = output_array[:, :, 3]
+    _, binary_mask = cv2.threshold(alpha_mask, 128, 255, cv2.THRESH_BINARY)
+
+    # Find contours in the binary mask
+    contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        raise ValueError("No object detected in the image")
+
+    # Calculate image center
+    image_center = (binary_mask.shape[1] // 2, binary_mask.shape[0] // 2)
+
+    # Function to compute distance from contour centroid to image center
+    def contour_distance(contour):
+        M = cv2.moments(contour)
+        if M["m00"] == 0:
+            return float('inf')
+        cX = int(M["m10"] / M["m00"])
+        cY = int(M["m01"] / M["m00"])
+        return np.sqrt((cX - image_center[0])**2 + (cY - image_center[1])**2)
+
+    # Find contour closest to center
+    closest_contour = min(contours, key=contour_distance)
+
+    # Create a mask for the closest contour
+    mask = np.zeros_like(binary_mask)
+    cv2.drawContours(mask, [closest_contour], -1, 255, thickness=cv2.FILLED)
+
+    # Add margin by dilating the mask
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (10, 10))  # Adjust the kernel size as needed
+    mask = cv2.dilate(mask, kernel, iterations=1)
+
+    # Find bounding rectangle of the cleaned mask
+    x, y, w, h = cv2.boundingRect(mask)
+
+    # Return box in (x_min, y_min, x_max, y_max)
+    x_min = x
+    y_min = y
+    x_max = x + w
+    y_max = y + h
+
+    return (x_min, y_min, x_max, y_max)
 
 
 def process_image_with_label_V2(image_path, label="Object"):
@@ -105,7 +160,7 @@ if __name__ == "__main__":
     label = "Primary Object"
 
     try:
-        bounding_box, annotated_image = process_image_with_label(image_path, output_path, label)
+        bounding_box, annotated_image = process_image_with_label_old(image_path, output_path, label)
         print("Bounding Box Coordinates (clockwise from top-left):", bounding_box)
     except Exception as e:
         print(f"Error processing image: {str(e)}")

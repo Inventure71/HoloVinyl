@@ -1,8 +1,7 @@
-import torch
 from ultralytics import YOLO
 from typing import List, Union
 
-from find_parameters_for_training import find_parameters
+from utils.find_parameters_for_training import find_parameters
 
 
 class YOLOHandler:
@@ -51,7 +50,10 @@ class YOLOHandler:
             save_dir=save_dir,
             cache=cache,  # Dramatically increases speed if set to True
             workers=num_workers,
-        )"""
+            patience=6  # Stops training if no improvement after 10 epochs
+        )
+        """
+
         self.model.train(
             data=data_path,
             epochs=epochs,
@@ -71,6 +73,7 @@ class YOLOHandler:
             self.model = YOLO(model_path)
             print(f"Model loaded from: {model_path}")
         except FileNotFoundError:
+            #raise f"Model file not found: {model_path}"
             print(f"Model file not found: {model_path}")
             self.model = YOLO(fallback)
 
@@ -110,10 +113,10 @@ class YOLOHandler:
             conf=conf_threshold,
             save=save,
             device=self.device,
-            save_dir=save_dir
+            #save_dir=save_dir
         )
 
-        print(f"Predictions completed. Results saved to: {save_dir}" if save else "Predictions completed.")
+        #print(f"Predictions completed. Results saved to: {save_dir}" if save else "Predictions completed.")
         #print("Results structure:", results)
 
         all_predictions = []

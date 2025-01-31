@@ -7,14 +7,15 @@ from spotipy.oauth2 import SpotifyOAuth
 
 class Spotify_Manager:
     def __init__(self):
-        self.username = "" # add here
-        self.CLIENT_ID = "" # add here
-        self.CLIENT_SECRET = "" # add here
-        self.REDIRECT_URI = 'http://google.com/callback/'
-        self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
         # File to store user's token
         self.TOKEN_FILE = "variables/spotify_token.json"
+        self.CONFIG_FILE = "variables/spotify_config.json"
+
+        self.username, self.CLIENT_ID, self.CLIENT_SECRET = self.load_credentials()
+
+        self.REDIRECT_URI = 'http://google.com/callback/'
+        self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
         self.last_url = ""
         self.currently_playing_url = ""
@@ -24,6 +25,16 @@ class Spotify_Manager:
         self.is_authenticated = True
 
         #self.currently_playing = self.spotify_client.current_playback()
+
+    def load_credentials(self):
+        """Load credentials from a JSON file and set them as global variables."""
+        if not os.path.exists(self.CONFIG_FILE):
+            raise FileNotFoundError("Config file not found. Run save_credentials() first.")
+
+        with open(self.CONFIG_FILE, "r") as file:
+            credentials = json.load(file)
+
+        return credentials["username"], credentials["CLIENT_ID"], credentials["CLIENT_SECRET"]
 
     def authenticate_user(self):
         print("Authenticating user...")
