@@ -126,13 +126,40 @@ class UI:
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
 
-        self.hand_tracking_manager = HandTrackingManager()
-
+        self.hand_tracking_manager = HandTrackingManager(callback_function=self.user_pinched)
+        self.radius_of_click = 50
+        self.draw_buttons = [
+            Button(
+                x=1807,
+                y=959,
+                width=200,
+                height=50,
+                text="Digital Test",
+                font=self.font,
+                text_color=(255, 255, 255),
+                button_color=(0, 128, 255),
+                hover_color=(0, 102, 204),
+                callback=lambda: button_clicked_start_prediction(),
+            )]
 
         # variable to check if i should activate it
         self.enable_spotify = enable_spotify
         if self.enable_spotify:
             self.spotify_manager = Spotify_Manager()
+
+    def user_pinched(self, mouse_position):
+        print("mouse clicked", mouse_position)
+
+        # check if mouse is clicking one of user added buttons
+        # find if point is in circle
+        for button in self.draw_buttons:
+            button.rect.collidepoint(mouse_position)
+            #if (mouse_position[0] - button.rect.x) ** 2 + (mouse_position[1] - button.rect.y) ** 2 <= self.radius_of_click ** 2:
+            print(f"Called button {button.text}")
+            button.callback()
+            return True
+
+        #self.hand_tracking_manager.is_pinching
 
     def calibrate_board(self, frame):
         if self.calibration_active:

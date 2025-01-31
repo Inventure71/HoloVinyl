@@ -10,7 +10,7 @@ HandLandmarkerResult = mp.tasks.vision.HandLandmarkerResult
 VisionRunningMode = mp.tasks.vision.RunningMode
 
 class HandTrackingManager:
-    def __init__(self):
+    def __init__(self, callback_function=None):
         """VARIABLES"""
         self.is_pinching = False
         self.latest_result = None
@@ -19,8 +19,8 @@ class HandTrackingManager:
         self.PINCH_THRESHOLD = 50
         self.SEPARATION_THRESHOLD = 100
         self.model_path = 'custom_models/hand_landmarker.task'
-        self.touch_margin = 10 # radius of the circle to click, with single point would be ass
 
+        self.callback_for_gesture = callback_function
 
         self.mouse_position = (0,0)
 
@@ -76,12 +76,15 @@ class HandTrackingManager:
 
         if last_distance <=  self.PINCH_THRESHOLD:
             if self.is_pinching:
+
                 print("Hand still pinching", self.mouse_position)
             else:
-                print("Hand closed")
+                None
+                #print("Hand closed")
             for old_distance in self.frame_distances:
                 if old_distance >=  self.SEPARATION_THRESHOLD:
                     self.is_pinching = True
+                    self.callback_for_gesture(self.mouse_position)
                     self.frame_distances = []
                     return True
 
