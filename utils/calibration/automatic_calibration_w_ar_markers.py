@@ -197,9 +197,64 @@ class ArMarkerHandler:
         return warped
 
     def map_click_to_cropped_space(self, click_point):
+        """
+        Map a click point from the warp_and_adjust coordinate system to the 640x640
+        coordinate system of the warp_and_crop_board output.
 
-        None
+        This approach assumes that:
+          - self.warped_corners is available (set in warp_and_adjust)
+          - self.warped_corners contains the four board corners (in any order; we will
+            compute the top-left and bottom-right)
+          - warp_and_crop_board uses the original corners to define a board of size
+            (width_out, height_out) which is then resized to 640x640. This width and height
+            are stored in self.original_size_wc.
 
+        Args:
+            click_point: A tuple (x, y) representing the click in warp_and_adjust space.
+
+        Returns:
+            A tuple (mapped_x, mapped_y) in the 640x640 coordinate space, or None if the click
+            falls outside the board.
+        """
+        if not hasattr(self, 'warped_corners'):
+            print("Error: warped_corners not available. Run warp_and_adjust first.")
+            return None
+        if not hasattr(self, 'original_size_wc'):
+            print("Error: original board size not available. Run warp_and_crop_board first.")
+            return None
+
+        # Compute the board's bounding box in warp_and_adjust space.
+        warped_corners = self.warped_corners  # assumed shape (4, 2)
+        board_top_left = np.min(warped_corners, axis=0)  # [x_min, y_min]
+        board_bottom_right = np.max(warped_corners, axis=0)  # [x_max, y_max]
+        board_width = board_bottom_right[0] - board_top_left[0]
+        board_height = board_bottom_right[1] - board_top_left[1]
+
+        # Compute the click's position relative to the board's top-left.
+        relative_x = click_point[0] - board_top_left[0]
+        relative_y = click_point[1] - board_top_left[1]
+
+        # If the click is outside the board area in warp_and_adjust, ignore it.
+        if relative_x < 0 or relative_y < 0 or relative_x > board_width or relative_y > board_height:
+            return None
+
+        # The board was warped to an image of size (width_out, height_out) before being resized.
+        width_out, height_out = self.original_size_wc
+
+        # Now, warp_and_crop_board resized the board to 640x640.
+        # Thus, the scaling factors are:
+        scale_x = 640.0 / width_out
+        scale_y = 640.0 / height_out
+
+        # Map the relative click position to the 640x640 space.
+        mapped_x = relative_x * scale_x
+        mapped_y = relative_y * scale_y
+
+        # Optionally, you might check if the mapped point falls within [0, 640] in both directions.
+        if mapped_x < 0 or mapped_x > 640 or mapped_y < 0 or mapped_y > 640:
+            return None
+
+        return (mapped_x, mapped_y)
 
 
 """
