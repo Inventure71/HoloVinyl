@@ -10,8 +10,9 @@ from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.database_handler_V3 import create_or_update_yolo_dataset
 from utils.string_processing import unsanitize_string, sanitize_string
 
-#TODO: added sanitization of strings, removing spaces ecc. Check if it works
-#TODO: Add continuous adjustment for board when automatic mode, it could be every N frames, but be aware of possible things hiding markers
+# TODO: added sanitization of strings, removing spaces ecc. Check if it works
+# TODO: Add continuous adjustment for board when automatic mode, it could be every N frames, but be aware of possible things hiding markers
+# TODO: Use local web interface if I want to set it up on raspberryPi pi
 
 """BUTTONS START"""
 def button_clicked_start_prediction():
