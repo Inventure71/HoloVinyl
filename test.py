@@ -1,134 +1,141 @@
-import math
-import cv2
-import mediapipe as mp
-import time
 
 
-# Initialize MediaPipe components
-BaseOptions = mp.tasks.BaseOptions
-HandLandmarker = mp.tasks.vision.HandLandmarker
-HandLandmarkerOptions = mp.tasks.vision.HandLandmarkerOptions
-HandLandmarkerResult = mp.tasks.vision.HandLandmarkerResult
-VisionRunningMode = mp.tasks.vision.RunningMode
+import pygame
+# The _sdl2 module (available in Pygame 2+) lets us create an extra window.
+# If you have problems with this module, consider using a modal preview in your main window.
+import pygame._sdl2 as sdl2
 
-# Load hand detection model
-model_path = 'custom_models/hand_landmarker.task'
-
-# Open webcam
-webcam = cv2.VideoCapture(0)
-
-# Global variable to store results
-is_pinching = False
-latest_result = None
-frame_distances = []
-N = 10
-PINCH_THRESHOLD = 50
-SEPARATION_THRESHOLD = 100
+from utils.pygame_utils.Button import Button
 
 
-def identify_pinch_gesture(last_distance):
-    global frame_distances, is_pinching
-    """Identifies a pinch gesture when the distance shrinks from >100 to <30 within N frames."""
-    if last_distance <= PINCH_THRESHOLD:
-        print("Hand closed")
-        for old_distance in frame_distances:
-            if old_distance >= SEPARATION_THRESHOLD:
-                print("Hand was open so now is pinching ")
-                is_pinching = True
-                frame_distances = []
-                return True
+# -------------------------------------------------------------------------
+# Preview window function
+# -------------------------------------------------------------------------
+def preview_window(buttons_list):
+    """
+    Open a secondary preview window that shows a frame and allows the user
+    to click and drag to select a zone. Once the zone is selected, a new
+    Button is created (using the Button class) and appended to buttons_list.
+    """
+    # Set the preview window size
+    preview_width, preview_height = 640, 480
 
-        is_pinching = True
-        return False
+    # Create the preview window using pygame._sdl2 (requires SDL2 and Pygame 2+)
+    preview_win = sdl2.Window("Preview", size=(preview_width, preview_height))
+    renderer = sdl2.Renderer(preview_win)
 
-    is_pinching = False
-    return False
+    clock = pygame.time.Clock()
 
+    selection_start = None   # Where the mouse was first pressed
+    selection_rect = None    # The current rectangle being selected
+    selecting = False        # Whether the user is currently dragging a selection
 
-def draw_landmarks(frame, result):
-    """Draw hand landmarks on the frame and overlay the Z-coordinates of the index finger."""
-    if not result.hand_landmarks:
-        return frame
+    running = True
+    while running:
+        for event in pygame.event.get():
+            # Close preview if the window is closed
+            if event.type == pygame.QUIT:
+                running = False
 
-    height, width, _ = frame.shape
-    for hand in result.hand_landmarks:
-        for i, landmark in enumerate(hand):
-            x, y = int(landmark.x * width), int(landmark.y * height)
+            # Start a new selection when left mouse button is pressed
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:
+                    selection_start = event.pos
+                    selecting = True
 
-            # Draw landmark points
-            cv2.circle(frame, (x, y), 5, (0, 255, 0), -1)  # Green dot
+            # Update the rectangle as the mouse moves while dragging
+            elif event.type == pygame.MOUSEMOTION:
+                if selecting and selection_start:
+                    x, y = selection_start
+                    current_x, current_y = event.pos
+                    # Determine top-left corner and width/height
+                    rect_x = min(x, current_x)
+                    rect_y = min(y, current_y)
+                    rect_width = abs(x - current_x)
+                    rect_height = abs(y - current_y)
+                    selection_rect = pygame.Rect(rect_x, rect_y, rect_width, rect_height)
 
-            # Display Z-coordinates only for index finger joints
-            if i in [5, 6, 7, 8]:  # Index finger landmarks
+            # When the user releases the mouse button, create a new Button
+            elif event.type == pygame.MOUSEBUTTONUP:
+                if event.button == 1 and selecting:
+                    selecting = False
+                    if selection_rect and selection_rect.width > 0 and selection_rect.height > 0:
+                        # Create a new Button based on the selected rectangle.
+                        # (You can customize the text, colors, callback, etc. as needed.)
+                        new_button = Button(
+                            selection_rect.x,
+                            selection_rect.y,
+                            selection_rect.width,
+                            selection_rect.height,
+                            text="New Button",
+                            font=pygame.font.SysFont(None, 24),
+                            text_color=(255, 255, 255),
+                            button_color=(0, 128, 255),
+                            hover_color=(0, 255, 255),
+                            callback=lambda: print("Button clicked")
+                        )
+                        buttons_list.append(new_button)
+                    # Reset selection variables
+                    selection_start = None
+                    selection_rect = None
 
-                z_text = f"Z: {landmark.z:.4f}"
-                cv2.putText(frame, z_text, (x + 10, y - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1, cv2.LINE_AA)
+        # --- Drawing in the preview window ---
+        renderer.draw_color = (50, 50, 50, 255)  # background color
+        renderer.clear()
 
+        # If the user is dragging, draw the selection rectangle in red
+        if selection_rect:
+            renderer.draw_color = (255, 0, 0, 255)
+            renderer.draw_rect(selection_rect)
 
-        #half_point = end_point[0] - int((end_point[0] - start_point[0]) / 2), end_point[1] - int((end_point[1] - start_point[1]) / 2)
+        renderer.present()
+        clock.tick(60)
 
-        start_point = (int(hand[4].x * width), int(hand[4].y * height))
-        end_point = (int(hand[8].x * width), int(hand[8].y * height))
-        distance = math.sqrt((end_point[0] - start_point[0]) ** 2 + (end_point[1] - start_point[1]) ** 2)
-        length = "Distance between index and thumb " + str(distance)
+    preview_win.destroy()
 
-        frame_distances.append(distance)
-        if len(frame_distances) > N:
-            frame_distances.pop(0)  # Keep only last N frames
+# -------------------------------------------------------------------------
+# Main function
+# -------------------------------------------------------------------------
+def main():
+    pygame.init()
+    screen = pygame.display.set_mode((800, 600))
+    pygame.display.set_caption("Main Window")
+    clock = pygame.time.Clock()
 
-        cv2.line(frame,start_point, end_point, (0, 255, 255), 2)
-        cv2.putText(frame, length, (0,50),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 1, cv2.LINE_AA)
+    # This list will store all the Button instances created
+    buttons_list = []
+    font = pygame.font.SysFont(None, 36)
 
-        if identify_pinch_gesture(distance):
-            print("Pinch Detected!")
-            cv2.putText(frame, "Pinch Detected!", (10, 100),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 3)
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
 
-    return frame
+            # Let each button process events (for hover and clicks)
+            for btn in buttons_list:
+                btn.handle_event(event)
 
+            # If the user presses the 'p' key, open the preview window.
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_p:
+                    preview_window(buttons_list)
 
-def print_result(result: HandLandmarkerResult, output_image, timestamp_ms: int):
-    """Callback function to process results."""
-    global latest_result
-    latest_result = result  # Store latest result for visualization
+        # --- Drawing in the main window ---
+        screen.fill((30, 30, 30))
 
+        # Draw all the buttons created (their positions come from the preview)
+        for btn in buttons_list:
+            btn.draw(screen)
 
-# Set up the hand landmark detector
-options = HandLandmarkerOptions(
-    base_options=BaseOptions(model_asset_path=model_path),
-    running_mode=VisionRunningMode.LIVE_STREAM,
-    num_hands = 1,
-    result_callback=print_result
-)
+        # Show instructions
+        instruction_text = font.render("Press 'P' to open preview and add a button", True, (200, 200, 200))
+        screen.blit(instruction_text, (20, 20))
 
-landmarker = HandLandmarker.create_from_options(options)
-#with HandLandmarker.create_from_options(options) as landmarker:
-while webcam.isOpened():
-    frame_timestamp_ms = int(time.time() * 1000)
-    ret, frame = webcam.read()
-    if not ret:
-        continue  # Skip frame if webcam read fails
+        pygame.display.flip()
+        clock.tick(60)
 
-    # Convert frame to RGB format
-    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+    pygame.quit()
 
-    # Detect hand landmarks asynchronously
-    landmarker.detect_async(mp_image, frame_timestamp_ms)
-
-    # Draw landmarks if detection has results
-    if latest_result is not None:
-        frame = draw_landmarks(frame, latest_result)
-
-    # Display the frame
-    cv2.imshow("Hand Tracking", frame)
-
-    # Break on 'q' key press
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Release resources
-webcam.release()
-cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()

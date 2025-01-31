@@ -11,8 +11,9 @@ from utils.generic import load_mappings
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
-from utils.spotify_manager import Spotify_Manager
+from utils.music.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
+from utils.music.use_ollama import get_song_from_image
 
 
 class UI:
