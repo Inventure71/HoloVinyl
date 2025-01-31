@@ -97,7 +97,6 @@ class UI:
             ),
         ]
 
-
         self.button_to_take_picture = Button(
                     x=512,
                     y=440,
@@ -304,6 +303,9 @@ class UI:
 
             else:
                 for button in self.buttons:
+                    button.draw(self.screen)
+
+                for button in self.draw_buttons:
                     button.draw(self.screen)
 
                 # Update the text field
