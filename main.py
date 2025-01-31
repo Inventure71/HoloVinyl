@@ -99,7 +99,7 @@ if __name__ == "__main__":
 
     enable_spotify = False
     automatic_calibration = False
-    load_last_calibration = True
+    load_last_calibration = False
 
     camera_index = 0
 

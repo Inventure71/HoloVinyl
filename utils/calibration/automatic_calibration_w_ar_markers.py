@@ -182,6 +182,8 @@ class ArMarkerHandler:
         cv2.imwrite("../../custom_models/markers/board_warped.png", warped)
         return warped
 
+
+
 """
 # Example Usage
 marker_handler = ArMarkerHandler()
