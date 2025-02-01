@@ -18,41 +18,6 @@ from utils.music.use_ollama import get_song_from_image
 
 from test import DigitalButtonEditor
 
-def load_buttons_to_setup(self):
-    """Load the digital buttons from the save file (if it exists) and scale them to display coordinates."""
-    if os.path.exists("digital_buttons.json"):
-        CALLBACK_MAPPING = {
-            "button_clicked": button_clicked,
-        }
-        with open("digital_buttons.json", "r") as f:
-            data = json.load(f)
-        self.draw_buttons = []
-        for item in data:
-            callback_id = item.get("callback_id", "button_clicked")
-            callback_param = item.get("callback_param", 0)
-            print(f"Loaded button with callback ID: {callback_id}, param: {callback_param}")
-            btn = Button(
-                x=item.get("x", 0),
-                y=item.get("y", 0),
-                width=item.get("width", 100),
-                height=item.get("height", 100),  # FIXED: use "height" instead of "width"
-                text=item.get("text", "Digital Button"),
-                font=self.font,
-                text_color=tuple(item.get("text_color", [255, 255, 255])),
-                button_color=tuple(item.get("button_color", [0, 128, 255])),
-                hover_color=tuple(item.get("hover_color", [0, 102, 204])),
-                callback=lambda param=callback_param, cid=callback_id: CALLBACK_MAPPING[cid](param),
-                border_radius=item.get("border_radius", 15)
-            )
-            print("Loaded button at position", btn.rect)
-            # Store callback info for later saving.
-            btn.callback_id = callback_id
-            btn.callback_param = callback_param
-            self.draw_buttons.append(btn)
-    else:
-        self.draw_buttons = []
-
-
 def button_clicked(n):
     print(f"Button {n} clicked 123012039321")
 
@@ -163,7 +128,6 @@ class UI:
 
         self.hand_tracking_manager = HandTrackingManager(callback_function=self.user_pinched)
         self.radius_of_click = 50
-        #self.draw_buttons = load_buttons()
 
         """MUSIC RELATED"""
         self.mappings = load_mappings()  # TODO update mappings once submenu is closed
@@ -178,7 +142,6 @@ class UI:
             self.music_thread = threading.Thread(target=self.spotify_manager.handle_music,
                                                  daemon=True)  # `daemon=True` allows the thread to exit when the main program exits
             self.music_thread.start()
-
 
 
         """HAND TRACKING"""
@@ -309,15 +272,19 @@ class UI:
         frame_timestamp_ms = 0
         ret, frame = self.webcam.read()
 
+        # Load the digital button UI
+        if self.digital_button_ui is None:
+            self.digital_button_ui = DigitalButtonEditor(background_frame=frame)
+            self.draw_buttons = self.digital_button_ui.load_buttons()
+            self.digital_button_ui.load_buttons()
+
+
         while self.running:
             if self.selecting_buttons_UI_active:
-
                 if self.digital_button_ui is None:
-                    self.digital_button_ui = DigitalButtonEditor(background_frame=frame, max_display_dimension=640)
+                    self.digital_button_ui = DigitalButtonEditor(background_frame=frame) #, max_display_dimension=1024
 
-                else:
-                    self.selecting_buttons_UI_active = self.digital_button_ui.run(self.screen)
-
+                self.selecting_buttons_UI_active, self.draw_buttons = self.digital_button_ui.run(self.screen, self.clock)
 
             else:
                 self.screen.fill((0,0,0))
@@ -379,8 +346,8 @@ class UI:
                     for button in self.buttons:
                         button.draw(self.screen)
 
-                    for button in self.draw_buttons:
-                        button.draw(self.screen)
+                    #for button in self.draw_buttons:
+                    #    button.draw(self.screen)
 
                     # Update the text field
                     self.text_field.update()

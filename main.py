@@ -100,8 +100,8 @@ if __name__ == "__main__":
     pygame.init()
 
     enable_spotify = True
-    automatic_calibration = True
-    load_last_calibration = False
+    automatic_calibration = False
+    load_last_calibration = True
 
     camera_index = 0
 
