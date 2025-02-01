@@ -305,9 +305,10 @@ class Spotify_Manager:
 
             # If no active sources, pause playback.
             if len(self.active_sources) == 0:
-                if self.spotify_client.current_playback().get('is_playing', False):
+                playback = self.spotify_client.current_playback()
+                if playback and playback.get('is_playing', False):
                     self.spotify_client.pause_playback()
-                print("No active sources; waiting...")
+                print("No active sources, waiting...")
                 self.current_song = None
                 self.time_to_wait = 0
                 time.sleep(0.1)
@@ -315,12 +316,12 @@ class Spotify_Manager:
 
             # Only trigger play_next_song if not already transitioning.
             if self.current_song is None and not self.searching:
-                print("No current song; playing next one...")
+                print("No current song, playing next one...")
                 self.play_next_song()
             else:
                 playback = self.spotify_client.current_playback()
-                if not playback.get('is_playing', False) and not self.searching:
-                    print("Playback stopped unexpectedly; starting next song...")
+                if playback and (not playback.get('is_playing', False) and not self.searching):
+                    print("Playback stopped unexpectedly, starting next song...")
                     self.play_next_song()
                 else:
                     if self.time_to_wait <= 0.5 and not self.searching:
