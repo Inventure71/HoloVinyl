@@ -17,7 +17,6 @@ class Song:
         self.source = source              # The active source from which this song was chosen
 
     def to_dict(self):
-        """Convert song info to a dictionary for saving."""
         return {
             "url": self.url,
             "duration": self.duration,
@@ -41,14 +40,14 @@ class Spotify_Manager:
         self.REDIRECT_URI = 'http://google.com/callback/'
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
-        # Data for managing playback
-        self.searching = False
-        self.already_played_tracks = {}  # keys: active source, values: list of track URLs already played from that source
-        self.active_sources = []         # list of active source URLs (or identifiers)
-        self.current_song = None         # the Song object currently playing
-        self.time_to_wait = 0            # remaining time (in seconds) for the current song
+        # Playback management data
+        self.searching = False  # Flag to indicate a transition is in progress
+        self.already_played_tracks = {}  # {active_source: [track URLs played]}
+        self.active_sources = []         # List of active source URLs (or identifiers)
+        self.current_song = None         # The Song object currently playing
+        self.time_to_wait = 0            # Remaining time (in seconds) for the current song
 
-        # URLs (for internal tracking)
+        # Internal URL tracking
         self.last_url = ""
         self.currently_playing_url = ""
 
@@ -56,7 +55,7 @@ class Spotify_Manager:
         self.spotify_client = self.authenticate_user()
         self.is_authenticated = True
 
-    """SETTERS AND GETTERS"""
+    """ SETTERS AND GETTERS """
 
     def remove_item_from_active_sources(self, item):
         print("Removing item from active sources in Spotify_Manager")
@@ -67,13 +66,14 @@ class Spotify_Manager:
         except ValueError:
             print("Item not found in active sources")
 
-        # If the current song came from the removed source, handle it now.
+        # If the current song came from the removed source, transition to the next song.
         if self.current_song and self.current_song.source == item:
             print("The current song originated from the removed source.")
             if self.active_sources:
                 print("Other active sources exist. Transitioning to the next song.")
                 self.spotify_client.pause_playback()
-                self.play_next_song()
+                if not self.searching:
+                    self.play_next_song()
             else:
                 print("No active sources remain. Pausing playback and resetting variables.")
                 self.spotify_client.pause_playback()
@@ -85,21 +85,18 @@ class Spotify_Manager:
     def add_item_to_active_sources(self, item):
         self.active_sources.append(item)
         print(f"Added new active source: {item}")
-        # If no song is currently playing, start playback.
-        if self.current_song is None:
+        # If no song is playing and no transition is in progress, start playback.
+        if self.current_song is None and not self.searching:
             print("No song currently playing. Starting playback.")
             self.play_next_song()
 
-    """AUTHENTICATION"""
+    """ AUTHENTICATION """
 
     def load_credentials(self):
-        """Load credentials from a JSON file and set them as global variables."""
         if not os.path.exists(self.CONFIG_FILE):
             raise FileNotFoundError("Config file not found. Run save_credentials() first.")
-
         with open(self.CONFIG_FILE, "r") as file:
             credentials = json.load(file)
-
         return credentials["username"], credentials["CLIENT_ID"], credentials["CLIENT_SECRET"]
 
     def authenticate_user(self):
@@ -134,7 +131,7 @@ class Spotify_Manager:
         print("User authenticated.")
         return spotipy.Spotify(auth=token_info["access_token"])
 
-    """PLAYLIST/ALBUM PLAYBACK"""
+    """ PLAYLIST/ALBUM PLAYBACK """
 
     def get_source_type(self, url):
         if "playlist" in url:
@@ -147,9 +144,6 @@ class Spotify_Manager:
             return None
 
     def get_current_song_info(self, url, source=None):
-        """Retrieve current playing song details and store them.
-           The 'source' parameter indicates which active source this song came from.
-        """
         try:
             track_id = url.split("/")[-1].split("?")[0]
             track = self.spotify_client.track(track_id)
@@ -165,21 +159,15 @@ class Spotify_Manager:
             )
             self.current_song = song_info
             return song_info
-
         except spotipy.exceptions.SpotifyException as e:
             print(f"Spotify API error: {e}")
             return None
 
     def play_playlist_or_album(self, url, source=None):
-        """
-        Play a given URL which may be a playlist, album, or track.
-        The optional 'source' parameter is used to mark which active source this song came from.
-        """
         self.last_url = url
         self.currently_playing_url = url
 
         song_info = self.get_current_song_info(url, source=source)
-
         try:
             context_type = self.get_source_type(url)
             context_id = url.split("/")[-1].split("?")[0]
@@ -187,7 +175,7 @@ class Spotify_Manager:
             if not devices["devices"]:
                 print("No active devices found. Please start Spotify on a device first.")
                 return
-            # Using the first available device (adjust the index as needed)
+            # Using the first available device (adjust as needed)
             device_id = devices["devices"][0]["id"]
 
             if context_type in ["playlist", "album"]:
@@ -213,7 +201,6 @@ class Spotify_Manager:
                 time.sleep(0.5)
                 self.authenticate_user()
                 self.play_playlist_or_album(self.last_url, source=source)
-
         except Exception as e:
             print(f"Error: {e}")
 
@@ -267,44 +254,48 @@ class Spotify_Manager:
                     print("Already played this song; skipping.")
                     tracks.remove(track_item)
 
-    """QUEUE MANAGEMENT"""
+    """ QUEUE MANAGEMENT """
 
     def play_next_song(self):
+        # Prevent duplicate calls if a transition is already in progress.
+        if self.searching:
+            print("Already transitioning to the next song; skipping duplicate call.")
+            return self.current_song
+
+        self.searching = True
+        self.current_song = None
+        self.time_to_wait = 0
+
         if len(self.active_sources) == 0:
             print("No active sources to play from.")
             self.spotify_client.pause_playback()
             self.searching = False
-            self.current_song = None
-            self.time_to_wait = 0
             return None
 
-        self.searching = True
-        # Reset current song and timer
-        self.current_song = None
-        self.time_to_wait = 0
-
-        # Randomly select one of the active sources
+        # Randomly select one active source and get a new track.
         source = random.choice(self.active_sources)
         track = self.get_random_not_already_played_song_in_playlist(source)
         self.already_played_tracks.setdefault(source, []).append(track)
 
         info = self.play_playlist_or_album(track, source=source)
         if info is not None:
-            # Convert milliseconds to seconds
+            # Convert duration from milliseconds to seconds.
             self.time_to_wait = info.duration // 1000
             print(f"Playing next song: '{info.title}' by {info.artist}. Duration: {self.time_to_wait} seconds")
         else:
             print("Failed to play next song.")
+
         self.searching = False
         return info
 
     def handle_music(self):
         """
-        Main loop that continuously monitors playback. It ensures that:
-          - When a song is nearly finished (0.5 seconds remaining), it starts the next song.
-          - If playback stops unexpectedly while active sources exist, it starts the next song.
-          - If there are no active sources, it pauses playback.
-        This method is intended to be run in parallel with code that adds or removes active sources.
+        Main loop that continuously monitors playback.
+        It starts a new song if:
+          - There is no current song.
+          - Playback stops unexpectedly.
+          - The song is nearly finished (<= 0.5 seconds remaining).
+        Before triggering a new song, the code checks that no transition is already in progress.
         """
         while self.running:
             if not self.is_authenticated:
@@ -312,7 +303,7 @@ class Spotify_Manager:
                 time.sleep(2)
                 continue
 
-            # If no active sources exist, ensure playback is paused.
+            # If no active sources, pause playback.
             if len(self.active_sources) == 0:
                 if self.spotify_client.current_playback().get('is_playing', False):
                     self.spotify_client.pause_playback()
@@ -322,18 +313,17 @@ class Spotify_Manager:
                 time.sleep(0.1)
                 continue
 
-            # If no song is playing, start the next one.
-            if self.current_song is None:
+            # Only trigger play_next_song if not already transitioning.
+            if self.current_song is None and not self.searching:
                 print("No current song; playing next one...")
                 self.play_next_song()
             else:
                 playback = self.spotify_client.current_playback()
-                if not playback.get('is_playing', False):
+                if not playback.get('is_playing', False) and not self.searching:
                     print("Playback stopped unexpectedly; starting next song...")
                     self.play_next_song()
                 else:
-                    # When the song is nearly finished (0.5 seconds remaining), move on.
-                    if self.time_to_wait <= 0.5:
+                    if self.time_to_wait <= 0.5 and not self.searching:
                         time.sleep(self.time_to_wait)
                         self.time_to_wait = 0
                         print("Song nearly finished. Transitioning to next song...")
@@ -346,9 +336,7 @@ class Spotify_Manager:
 if __name__ == "__main__":
     spotify = Spotify_Manager()
     url = input("Enter Spotify playlist or album URL: ")
-    # Start playback for the first time; the active source here is the URL entered.
-    # (You may later add or remove sources via add_item_to_active_sources/remove_item_from_active_sources.)
+    # Start playback with the first source provided.
     spotify.play_playlist_or_album(url, source=url)
-    # Optionally, run the music handler loop.
-    # For example, this could be run in a separate thread if sources are managed concurrently.
+    # Start the main playback loop.
     spotify.handle_music()
