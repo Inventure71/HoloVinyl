@@ -260,7 +260,8 @@ class UI:
                 text = font.render(f"{label} ({confidence:.2f})", True, (144, 238, 144))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
 
-            self.detect_active_sources(detected_classes)
+            if self.enable_spotify:
+                self.detect_active_sources(detected_classes)
         except Exception as e:
             print("Error while processing predictions:", e)
 
