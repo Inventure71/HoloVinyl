@@ -69,7 +69,7 @@ class Spotify_Manager:
             print("Item not found in active sources")
 
         # check if item is running:
-        if self.current_song.original_url == item:
+        if self.current_song and self.current_song.original_url == item:
             self.spotify_client.pause_playback()
             self.play_next_song()
             #self.current_song = None
@@ -228,7 +228,9 @@ class Spotify_Manager:
 
             else:
                 track = random.choice(tracks)
-                if track['track']['external_urls']['spotify'] not in self.already_played_tracks:
+                played = self.already_played_tracks.get(source, [])
+
+                if track['track']['external_urls']['spotify'] not in played:
                     print("Found a new song to play")
                     return track['track']['external_urls']['spotify']
                 else:
