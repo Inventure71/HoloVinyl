@@ -219,11 +219,14 @@ class UI:
                 self.active_sources.append(url)
                 self.spotify_manager.add_item_to_active_sources(url)
                 print(f"Added to active sources: {url}", "Active sources:", self.active_sources)
+            elif self.count_in_a_row[cls] >= self.threshold_frames:
+                self.count_in_a_row[cls] = self.threshold_frames - 1 # To limit the number of frames in a row
+
 
         for cls in list(self.count_in_a_row.keys()):
             if cls not in detected_classes:
-
                 self.count_in_a_row[cls] -= 1
+                print(f"Class {cls} not detected, count decreased to {self.count_in_a_row[cls]}")
                 if self.count_in_a_row[cls] <= 0:
                     print("Item not seen for a while")
                     del self.count_in_a_row[cls]
@@ -239,7 +242,8 @@ class UI:
                         print(f"Removed from active sources: {url}", "Active sources:", self.active_sources)
                     else:
                         print(f"Class {cls} not in active sources, skipping...")
-    def process_frame(self, frame):
+
+    def process_frame(self, frame, frame_timestamp_ms):
         """
         Process a single video frame and display predictions.
         :param frame: The current video frame.
@@ -266,7 +270,7 @@ class UI:
                 text = font.render(f"{label} ({confidence:.2f})", True, (144, 238, 144))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
 
-            if self.enable_spotify:
+            if self.enable_spotify and (frame_timestamp_ms % 5 == 0):
                 self.detect_active_sources(detected_classes)
         except Exception as e:
             print("Error while processing predictions:", e)
@@ -296,7 +300,7 @@ class UI:
             # TODO: check if i can just crop frame_temp to 600*600 instead of running warp and crop
 
             # new version
-            frame_temp = self.marker_handler.warp_and_adjust(frame.copy(), corners=self.calibration_points)
+            frame_temp = self.marker_handler.warp_and_adjust(frame, corners=self.calibration_points)
             self.hand_tracking_manager.analyze_frame(frame_temp, frame_timestamp_ms)
             frame_timestamp_ms += 1
 
@@ -321,7 +325,7 @@ class UI:
             elif self.predicting:
                 self.screen.blit(self.font.render("Predicting...", True, (255, 255, 255)), (200, 400))
 
-                self.process_frame(frame)
+                self.process_frame(frame, frame_timestamp_ms)
 
             else:
                 self.display_frame(frame)
@@ -342,7 +346,7 @@ class UI:
                 # Draw the text field
                 self.text_field.draw(self.screen)
 
-            self.clock.tick(60)
+            self.clock.tick(30)
             pygame.display.flip()
 
         self.webcam.release()

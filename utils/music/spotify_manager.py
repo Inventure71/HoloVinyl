@@ -306,7 +306,7 @@ class Spotify_Manager:
                 print("Not authenticated")
                 time.sleep(2)
 
-            if len(self.active_sources) > 0 and not self.searching:
+            elif len(self.active_sources) > 0 and not self.searching:
                 self.one_time_check = True
 
                 if self.current_song is None:
