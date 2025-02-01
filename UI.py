@@ -203,21 +203,35 @@ class UI:
     def detect_active_sources(self, detected_classes):
         for cls in detected_classes:
             self.count_in_a_row[cls] = dict.get(cls, 0) + 1
-            if self.count_in_a_row[cls] >= self.threshold_frames and cls not in self.active_sources:
-                self.active_sources.append(cls) # CHANGE THIS TO THE ALBUM / MUSIC URL
-                print(f"Added to active sources: {cls}")
+
+            url = self.mappings.get(cls, '')
+            if url == '':
+                print(f"Class {cls} not found OR empty in mappings, skipping...")
+                continue
+
+            if self.count_in_a_row[cls] >= self.threshold_frames and url not in self.active_sources:
+                self.count_in_a_row[cls] = self.threshold_frames - 1 # To limit the number of frames in a row
+                self.active_sources.append(url)
+                self.spotify_manager.add_item_to_active_sources(url)
+                print(f"Added to active sources: {url}")
 
         for cls in list(self.count_in_a_row.keys()):
             if cls not in detected_classes:
+
                 self.count_in_a_row[cls] -= 1
                 if self.count_in_a_row[cls] <= 0:
                     print("Item not seen for a while")
                     del self.count_in_a_row[cls]
-                    if cls in self.active_sources:
-                        self.active_sources.remove(cls)
-                        print(f"Removed from active sources: {cls}")
 
-        self.spotify_manager.active_sources = self.active_sources
+                    url = self.mappings.get(cls, '')
+                    if url == '':
+                        print(f"Class {cls} not found OR empty in mappings, skipping...")
+                        continue
+
+                    if url in self.active_sources:
+                        self.active_sources.remove(url)
+                        self.spotify_manager.remove_item_from_active_sources(url)
+                        print(f"Removed from active sources: {url}")
 
     def process_frame(self, frame):
         """
