@@ -10,6 +10,12 @@ class ArMarkerHandler:
         self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
         self.aruco_params = cv2.aruco.DetectorParameters()
 
+        self.original_size_wc = None
+        self.matrix_wa = None
+        self.matrix_wc = None
+
+        self.warped_corners = None
+
     def create_board(self, output_path="custom_models/board.png", margin=50):
         """Creates an A4-sized board with four ArUco markers forming a perfect square,
         with the left-side markers fixed near the A4 corners and the right-side markers forming a square.
@@ -126,10 +132,129 @@ class ArMarkerHandler:
         matrix = cv2.getPerspectiveTransform(corners, dst_pts)
         warped = cv2.warpPerspective(image, matrix, (width_out, height_out))
 
+        self.original_size_wc = (width_out, height_out)
+        self.matrix_wc = matrix
+
         warped = cv2.resize(warped, (640, 640))
         cv2.imwrite("../../custom_models/markers/board_warped.png", warped)
 
         return warped
+
+    # REDUNDANT FUNCTION
+    # TODO: Remove this function and implement in one above
+    def warp_and_adjust(self, image, corners=None):
+        if corners is None:
+            print("No corners provided! Run detect_corners() first.")
+            return None, None
+
+        corners = np.array(corners, dtype=np.float32)
+
+        # Calculate width and height based on corner distances
+        top_left, top_right, bottom_left, bottom_right = corners
+        width_top = np.linalg.norm(top_right - top_left)
+        width_bottom = np.linalg.norm(bottom_right - bottom_left)
+        width = int((width_top + width_bottom) / 2)
+
+        height_left = np.linalg.norm(bottom_left - top_left)
+        height_right = np.linalg.norm(bottom_right - top_right)
+        height = int((height_left + height_right) / 2)
+
+        # Destination points based on calculated width and height
+        dst_pts = np.array([
+            [0, 0],
+            [width, 0],
+            [0, height],
+            [width, height]
+        ], dtype=np.float32)
+
+        # Compute the perspective transform matrix
+        matrix = cv2.getPerspectiveTransform(corners, dst_pts)
+
+        self.matrix_wa = matrix
+
+        # Transform the original image's corners to find output bounds
+        h, w = image.shape[:2]
+        orig_corners = np.array([[0, 0], [w, 0], [0, h], [w, h]], dtype=np.float32)
+        transformed_corners = cv2.perspectiveTransform(orig_corners.reshape(1, -1, 2), matrix).reshape(-1, 2)
+
+        # Calculate bounding box of transformed corners
+        min_x, min_y = np.min(transformed_corners, axis=0)
+        max_x, max_y = np.max(transformed_corners, axis=0)
+        output_width = int(np.ceil(max_x - min_x))
+        output_height = int(np.ceil(max_y - min_y))
+
+        # Adjust the homography matrix to shift points into positive coordinates
+        translation = np.array([[1, 0, -min_x], [0, 1, -min_y], [0, 0, 1]], dtype=np.float32)
+        adjusted_matrix = translation @ matrix
+
+        # Warp the image with the correct output size
+        warped = cv2.warpPerspective(image, adjusted_matrix, (output_width, output_height))
+
+        # Transform the original corners to the warped image coordinates
+        self.warped_corners = cv2.perspectiveTransform(corners.reshape(1, -1, 2), adjusted_matrix).reshape(-1, 2)
+
+        cv2.imwrite("../../custom_models/markers/board_warped.png", warped)
+        return warped
+
+    def map_click_to_cropped_space(self, click_point):
+        """
+        Map a click point from the warp_and_adjust coordinate system to the 640x640
+        coordinate system of the warp_and_crop_board output.
+
+        This approach assumes that:
+          - self.warped_corners is available (set in warp_and_adjust)
+          - self.warped_corners contains the four board corners (in any order; we will
+            compute the top-left and bottom-right)
+          - warp_and_crop_board uses the original corners to define a board of size
+            (width_out, height_out) which is then resized to 640x640. This width and height
+            are stored in self.original_size_wc.
+
+        Args:
+            click_point: A tuple (x, y) representing the click in warp_and_adjust space.
+
+        Returns:
+            A tuple (mapped_x, mapped_y) in the 640x640 coordinate space, or None if the click
+            falls outside the board.
+        """
+        if not hasattr(self, 'warped_corners'):
+            print("Error: warped_corners not available. Run warp_and_adjust first.")
+            return None
+        if not hasattr(self, 'original_size_wc'):
+            print("Error: original board size not available. Run warp_and_crop_board first.")
+            return None
+
+        # Compute the board's bounding box in warp_and_adjust space.
+        warped_corners = self.warped_corners  # assumed shape (4, 2)
+        board_top_left = np.min(warped_corners, axis=0)  # [x_min, y_min]
+        board_bottom_right = np.max(warped_corners, axis=0)  # [x_max, y_max]
+        board_width = board_bottom_right[0] - board_top_left[0]
+        board_height = board_bottom_right[1] - board_top_left[1]
+
+        # Compute the click's position relative to the board's top-left.
+        relative_x = click_point[0] - board_top_left[0]
+        relative_y = click_point[1] - board_top_left[1]
+
+        # If the click is outside the board area in warp_and_adjust, ignore it.
+        if relative_x < 0 or relative_y < 0 or relative_x > board_width or relative_y > board_height:
+            return None
+
+        # The board was warped to an image of size (width_out, height_out) before being resized.
+        width_out, height_out = self.original_size_wc
+
+        # Now, warp_and_crop_board resized the board to 640x640.
+        # Thus, the scaling factors are:
+        scale_x = 640.0 / width_out
+        scale_y = 640.0 / height_out
+
+        # Map the relative click position to the 640x640 space.
+        mapped_x = relative_x * scale_x
+        mapped_y = relative_y * scale_y
+
+        # Optionally, you might check if the mapped point falls within [0, 640] in both directions.
+        if mapped_x < 0 or mapped_x > 640 or mapped_y < 0 or mapped_y > 640:
+            return None
+
+        return (mapped_x, mapped_y)
 
 
 """

@@ -10,8 +10,11 @@ from utils.calibration.manual_calibration import ManualBoardCalibration
 from utils.database_handler_V3 import create_or_update_yolo_dataset
 from utils.string_processing import unsanitize_string, sanitize_string
 
-#TODO: added sanitization of strings, removing spaces ecc. Check if it works
-#TODO: Add continuous adjustment for board when automatic mode, it could be every N frames, but be aware of possible things hiding markers
+# TODO: added sanitization of strings, removing spaces ecc. Check if it works
+# TODO: Add continuous adjustment for board when automatic mode, it could be every N frames, but be aware of possible things hiding markers
+# TODO: use local web interface if I want to set it up on raspberryPi pi
+# TODO: in automatic calibration, make the functions more efficient by calculating once the various variables that don't change (almost all of them)
+# TODO: add that the hand tracking is always working but not at all frames
 
 """BUTTONS START"""
 def button_clicked_start_prediction():
@@ -96,16 +99,16 @@ def button_clicked_open_submenu():
 if __name__ == "__main__":
     pygame.init()
 
-    enable_spotify = False
+    enable_spotify = True
     automatic_calibration = True
+    load_last_calibration = False
 
-    camera_index = 1
-
+    camera_index = 0
 
     if automatic_calibration:
         points = None
     else:
-        calibration = ManualBoardCalibration(camera_index, load_last_calibration=True)
+        calibration = ManualBoardCalibration(camera_index, load_last_calibration=load_last_calibration)
         points = calibration.run()
 
     #points = [(0, 0), (600, 0), (600, 600), (0, 600)]

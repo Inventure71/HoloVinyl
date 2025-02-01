@@ -1,17 +1,21 @@
 import os
+import random
+import threading
 import time
 
 import cv2
 import numpy as np
 import pygame
 
+from HandTracking import HandTrackingManager
 from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
 from utils.generic import load_mappings
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
-from utils.spotify_manager import Spotify_Manager
+from utils.music.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
+from utils.music.use_ollama import get_song_from_image
 
 
 class UI:
@@ -96,7 +100,6 @@ class UI:
             ),
         ]
 
-
         self.button_to_take_picture = Button(
                     x=512,
                     y=440,
@@ -120,15 +123,60 @@ class UI:
 
         self.training_in_progress = False
 
-        self.mappings = load_mappings() #TODO update mappings once submenu is closed
-        self.queue = []  # Queue for classes
+        self.hand_tracking_manager = HandTrackingManager(callback_function=self.user_pinched)
+        self.radius_of_click = 50
+        self.draw_buttons = [
+            Button(
+                x=1807,
+                y=959,
+                width=200,
+                height=50,
+                text="Example Button",
+                font=self.font,
+                text_color=(255, 255, 255),
+                button_color=(0, 128, 255),
+                hover_color=(0, 102, 204),
+                callback=lambda: button_clicked_start_prediction(),
+            )]
+
+        """MUSIC RELATED"""
+        self.mappings = load_mappings()  # TODO update mappings once submenu is closed
+        self.active_sources = []
         self.class_frame_count = {}  # Tracks consecutive frames for each class
         self.threshold_frames = 5  # Number of consecutive frames needed to add to the queue
-
-        # variable to check if i should activate it
-        self.enable_spotify = enable_spotify
+        self.count_in_a_row = {}
+        self.enable_spotify = enable_spotify # variable to check if i should activate it
         if self.enable_spotify:
             self.spotify_manager = Spotify_Manager()
+            # Run handle_music function in a separate thread
+            self.music_thread = threading.Thread(target=self.spotify_manager.handle_music,
+                                                 daemon=True)  # `daemon=True` allows the thread to exit when the main program exits
+            self.music_thread.start()
+
+    def user_pinched(self, mouse_position):
+        print("mouse clicked", mouse_position)
+
+        # check if mouse is clicking one of user added buttons
+        # find if point is in circle
+        for button in self.draw_buttons:
+            button.rect.collidepoint(mouse_position)
+            #if (mouse_position[0] - button.rect.x) ** 2 + (mouse_position[1] - button.rect.y) ** 2 <= self.radius_of_click ** 2:
+            print(f"Called button {button.text}")
+            button.callback()
+            return True
+
+        """
+                # When processing clicks:
+                #cropped_point =  self.marker_handler.map_click_to_cropped_space(
+                #    click_point=mouse_position
+                #)
+
+                if cropped_point is not None:
+                    print(f"Clicked on cropped space: {cropped_point}")
+                else:
+                    print("Clicked outside of cropped space")"""
+
+        #self.hand_tracking_manager.is_pinching
 
     def calibrate_board(self, frame):
         if self.calibration_active:
@@ -157,31 +205,45 @@ class UI:
         frame = pygame.surfarray.make_surface(frame)
         self.screen.blit(frame, (0, 0))
 
-    def class_consecutive_frames(self, detected_classes):
-        # Update class frame counts
+    def detect_active_sources(self, detected_classes):
         for cls in detected_classes:
-            self.class_frame_count[cls] = self.class_frame_count.get(cls, 0) + 1
-            if self.class_frame_count[cls] >= self.threshold_frames and cls not in self.queue:
-                # Add to queue if seen for N frames
-                item = self.mappings.get(cls, '')
-                if item != '' and item not in self.queue:
-                    self.queue.append(item)
-                    print(f"Added to queue: {item}")
-                else:
-                    print("Class empty so skipping OR already in queue")
+            self.count_in_a_row[cls] = self.count_in_a_row.get(cls, 0) + 1
+
+            url = self.mappings.get(cls, '')
+            if url == '':
+                print(f"Class {cls} not found OR empty in mappings, skipping...")
+                continue
+
+            if self.count_in_a_row[cls] >= self.threshold_frames and url not in self.active_sources:
+                self.count_in_a_row[cls] = self.threshold_frames - 1 # To limit the number of frames in a row
+                self.active_sources.append(url)
+                self.spotify_manager.add_item_to_active_sources(url)
+                print(f"Added to active sources: {url}", "Active sources:", self.active_sources)
+            elif self.count_in_a_row[cls] >= self.threshold_frames:
+                self.count_in_a_row[cls] = self.threshold_frames - 1 # To limit the number of frames in a row
 
 
-        # Remove classes not detected in this frame
-        for cls in list(self.class_frame_count.keys()):
+        for cls in list(self.count_in_a_row.keys()):
             if cls not in detected_classes:
-                self.class_frame_count[cls] -= 1
-                if self.class_frame_count[cls] <= 0 and self.mappings.get(cls, cls) in self.queue:
-                    # Remove from queue when not seen anymore
-                    self.queue.remove(self.mappings.get(cls, ''))
-                    del self.class_frame_count[cls]
-                    print(f"Removed from queue: {self.mappings.get(cls, '')}")
+                self.count_in_a_row[cls] -= 1
+                print(f"Class {cls} not detected, count decreased to {self.count_in_a_row[cls]}")
+                if self.count_in_a_row[cls] <= 0:
+                    print("Item not seen for a while")
+                    del self.count_in_a_row[cls]
 
-    def process_frame(self, frame):
+                    url = self.mappings.get(cls, '')
+                    if url == '':
+                        print(f"Class {cls} not found OR empty in mappings, skipping...")
+                        continue
+
+                    if url in self.active_sources:
+                        self.spotify_manager.remove_item_from_active_sources(url)
+                        self.active_sources.remove(url)
+                        print(f"Removed from active sources: {url}", "Active sources:", self.active_sources)
+                    else:
+                        print(f"Class {cls} not in active sources, skipping...")
+
+    def process_frame(self, frame, frame_timestamp_ms):
         """
         Process a single video frame and display predictions.
         :param frame: The current video frame.
@@ -208,12 +270,13 @@ class UI:
                 text = font.render(f"{label} ({confidence:.2f})", True, (144, 238, 144))
                 self.screen.blit(text, (x1, y1 - 20))  # Above the box
 
-            self.class_consecutive_frames(detected_classes)
+            if self.enable_spotify and (frame_timestamp_ms % 1 == 0):
+                self.detect_active_sources(detected_classes)
         except Exception as e:
             print("Error while processing predictions:", e)
 
     def run(self):
-        queue_timer = time.time()
+        frame_timestamp_ms = 0
         while self.running:
             self.screen.fill((0,0,0))
             for event in pygame.event.get():
@@ -234,9 +297,16 @@ class UI:
 
             ret, frame = self.webcam.read()
 
+            # TODO: check if i can just crop frame_temp to 600*600 instead of running warp and crop
+
             # new version
+            frame_temp = self.marker_handler.warp_and_adjust(frame, corners=self.calibration_points)
+            self.hand_tracking_manager.analyze_frame(frame_temp, frame_timestamp_ms)
+            frame_timestamp_ms += 1
+
             frame = self.marker_handler.warp_and_crop_board(frame, corners=self.calibration_points, is_for_frame=True)
             #frame = transform_to_square(frame, self.calibration_points)
+
 
             self.frame = frame
             #frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
@@ -255,7 +325,7 @@ class UI:
             elif self.predicting:
                 self.screen.blit(self.font.render("Predicting...", True, (255, 255, 255)), (200, 400))
 
-                self.process_frame(frame)
+                self.process_frame(frame, frame_timestamp_ms)
 
             else:
                 self.display_frame(frame)
@@ -267,20 +337,16 @@ class UI:
                 for button in self.buttons:
                     button.draw(self.screen)
 
+                for button in self.draw_buttons:
+                    button.draw(self.screen)
+
                 # Update the text field
                 self.text_field.update()
 
                 # Draw the text field
                 self.text_field.draw(self.screen)
 
-            """SPOTIFY"""
-            # Process the queue every 5 seconds
-            if time.time() - queue_timer >= 3.0 and self.enable_spotify:  # Check every 5 seconds
-                print("Checking queue...", self.queue)
-                self.queue = self.spotify_manager.continue_queue(self.queue)
-                queue_timer = time.time()
-
-            self.clock.tick(60)
+            self.clock.tick(30)
             pygame.display.flip()
 
         self.webcam.release()
