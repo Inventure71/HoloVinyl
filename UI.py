@@ -147,7 +147,7 @@ class UI:
         """HAND TRACKING"""
         self.digital_button_ui = None
         self.draw_buttons = []
-        self.selecting_buttons_UI_active = True
+        self.selecting_buttons_UI_active = False
 
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
