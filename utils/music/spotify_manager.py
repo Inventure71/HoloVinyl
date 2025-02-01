@@ -41,6 +41,7 @@ class Spotify_Manager:
 
 
         # Queue of songs to play
+        self.searching = False
         self.already_played_tracks = {}  # keys: source, values: list of track URLs
         self.queue = []
         self.active_sources = []
@@ -59,6 +60,7 @@ class Spotify_Manager:
 
     """SETTERS AND GETTERS"""
     def remove_item_from_active_sources(self, item):
+        print("Removing item from active sources in spotify manager")
         try:
             self.active_sources.remove(item)
 
@@ -68,12 +70,26 @@ class Spotify_Manager:
         except ValueError:
             print("Item not found in active sources")
 
+
+        # find if current song is the one that is being removed
+        if self.current_song and self.current_song.original_url == item:
+            if self.spotify_client.current_playback().get('is_playing', True):
+                self.spotify_client.pause_playback()
+            self.play_next_song()
+        else:
+            print("Current song is not the one that is being removed")
+
+
+        """self.spotify_client.pause_playback()
         # check if item is running:
         if self.current_song and self.current_song.original_url == item:
             self.spotify_client.pause_playback()
             self.play_next_song()
             #self.current_song = None
             #self.time_to_wait = 0
+        else:
+            self.spotify_client.pause_playback()"""
+
 
 
     def add_item_to_active_sources(self, item):
@@ -103,13 +119,19 @@ class Spotify_Manager:
                 if not spotipy.SpotifyOAuth.is_token_expired(token_info):
                     return spotipy.Spotify(auth=token_info["access_token"])
                 else:
-                    print(spotipy.SpotifyOAuth.refresh_access_token(token_info["refresh_token"]))
+                    # Create an instance of SpotifyOAuth to refresh the token
+                    sp_oauth = SpotifyOAuth(
+                        client_id=self.CLIENT_ID,
+                        client_secret=self.CLIENT_SECRET,
+                        redirect_uri=self.REDIRECT_URI,
+                        scope=self.SCOPE
+                    )
+                    token_info = sp_oauth.refresh_access_token(token_info["refresh_token"])
+                    with open(self.TOKEN_FILE, "w") as file:
+                        json.dump(token_info, file)
+                    return spotipy.Spotify(auth=token_info["access_token"])
 
-            #print("Token expired. Please re-authenticate.")
-            #os.remove(self.TOKEN_FILE)
-            #time.sleep(0.1)
-
-        # Authenticate with SpotifyOAuth and save the token
+        # If token file doesn't exist or refresh failed, authenticate normally
         sp_oauth = SpotifyOAuth(
             client_id=self.CLIENT_ID,
             client_secret=self.CLIENT_SECRET,
@@ -175,7 +197,7 @@ class Spotify_Manager:
             if not devices["devices"]:
                 print("No active devices found. Please start playing Spotify on a device first.")
                 return
-            device_id = devices["devices"][0]["id"]
+            device_id = devices["devices"][1]["id"]
 
             if context_type in ["playlist", "album"]:
                 # Play a playlist or album
@@ -204,15 +226,16 @@ class Spotify_Manager:
             print(f"Error: {e}")
 
     def get_random_not_already_played_song_in_playlist(self, source):
-        # check if source is an album, playlist or song
+        # Determine the source type: album, playlist, or track.
+        source_type = self.get_source_type(source)
 
-        type = self.get_source_type(source)
-
-        if type == "track":
+        if source_type == "track":
             return source
-        if type == "playlist":
+
+        # Get the tracks for playlists or albums.
+        if source_type == "playlist":
             playlist_album = self.spotify_client.playlist_items(source)
-        elif type == "album":
+        elif source_type == "album":
             playlist_album = self.spotify_client.album_tracks(source)
         else:
             raise ValueError("Invalid source type")
@@ -225,20 +248,42 @@ class Spotify_Manager:
                 print("No more songs to play, resetting playlist...")
                 self.already_played_tracks[source] = []
                 return self.get_random_not_already_played_song_in_playlist(source)
-
             else:
-                track = random.choice(tracks)
+                track_item = random.choice(tracks)
                 played = self.already_played_tracks.get(source, [])
 
-                if track['track']['external_urls']['spotify'] not in played:
+                if source_type == "playlist":
+                    track_obj = track_item.get('track')
+                    if not track_obj:
+                        print("No track data found, skipping this item...")
+                        tracks.remove(track_item)
+                        continue
+                    # Use a defensive check for the 'spotify' key:
+                    external_urls = track_obj.get('external_urls', {})
+                    track_url = external_urls.get('spotify')
+                    if not track_url:
+                        print("Spotify URL not found for track, skipping...")
+                        tracks.remove(track_item)
+                        continue
+                elif source_type == "album":
+                    external_urls = track_item.get('external_urls', {})
+                    track_url = external_urls.get('spotify')
+                    if not track_url:
+                        print("Spotify URL not found for album track, skipping...")
+                        tracks.remove(track_item)
+                        continue
+
+                if track_url not in played:
                     print("Found a new song to play")
-                    return track['track']['external_urls']['spotify']
+                    return track_url
                 else:
                     print("Already played this song, skipping...")
-                    tracks.remove(track)
+                    tracks.remove(track_item)
 
     """QUEUE MANAGEMENT"""
     def play_next_song(self):
+        self.searching = True
+
         # RESET JUST TO BE SURE
         self.current_song = None
         self.time_to_wait = 0
@@ -250,48 +295,53 @@ class Spotify_Manager:
         info = self.play_playlist_or_album(track)
         self.time_to_wait = info.duration // 1000
 
+        self.searching = False
         return info
 
     def handle_music(self):
         start_time = time.time()
+        self.one_time_check = True
         while self.running:
             if not self.is_authenticated:
                 print("Not authenticated")
                 time.sleep(2)
 
-            if len(self.active_sources) > 0:
+            if len(self.active_sources) > 0 and not self.searching:
+                self.one_time_check = True
+
                 if self.current_song is None:
                     print("No current song, playing next one...")
                     info = self.play_next_song()
 
                 if start_time + 30 < time.time():
-                    if self.spotify_client.current_playback() is None:
+                    if not self.spotify_client.current_playback().get('is_playing', False):
                         print("No song, playing next song...")
                         info = self.play_next_song()
                         start_time = time.time()
 
-                if self.time_to_wait == 0:
-                    if self.spotify_client.current_playback() is None:
-                        print("No current song, playing next one...")
-                        info = self.play_next_song()
-
-                if self.time_to_wait <= 0:
+                if self.time_to_wait + 0.1 <= 0.0:
                     # Check if playback has actually stopped or the song is finished
-                    if self.spotify_client.current_playback() is None:
+                    if not self.spotify_client.current_playback().get('is_playing', False):
                         print("Playback stopped, playing next song...")
                         info = self.play_next_song()
+
+
 
                 if self.time_to_wait < 1:
                     time.sleep(max(self.time_to_wait, 0))
                     self.time_to_wait = 0
 
                 else:
-                    time.sleep(1)
-                    self.time_to_wait -= 1
+                    time.sleep(0.5)
+                    self.time_to_wait -= 0.5
 
             else:
+                if self.one_time_check:
+                    if self.spotify_client.current_playback().get('is_playing', False):
+                        self.spotify_client.pause_playback()
                 print("No active sources, waiting...")
-                time.sleep(0.5)
+                self.time_to_wait = 0
+                time.sleep(0.1)
 
 
         # When playing a song save how long it is and 5 seconds before it ends start checking if the song is still playing

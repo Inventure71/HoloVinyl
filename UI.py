@@ -1,5 +1,6 @@
 import os
 import random
+import threading
 import time
 
 import cv2
@@ -147,6 +148,10 @@ class UI:
         self.enable_spotify = enable_spotify # variable to check if i should activate it
         if self.enable_spotify:
             self.spotify_manager = Spotify_Manager()
+            # Run handle_music function in a separate thread
+            self.music_thread = threading.Thread(target=self.spotify_manager.handle_music,
+                                                 daemon=True)  # `daemon=True` allows the thread to exit when the main program exits
+            self.music_thread.start()
 
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
@@ -202,7 +207,7 @@ class UI:
 
     def detect_active_sources(self, detected_classes):
         for cls in detected_classes:
-            self.count_in_a_row[cls] = dict.get(cls, 0) + 1
+            self.count_in_a_row[cls] = self.count_in_a_row.get(cls, 0) + 1
 
             url = self.mappings.get(cls, '')
             if url == '':
@@ -213,7 +218,7 @@ class UI:
                 self.count_in_a_row[cls] = self.threshold_frames - 1 # To limit the number of frames in a row
                 self.active_sources.append(url)
                 self.spotify_manager.add_item_to_active_sources(url)
-                print(f"Added to active sources: {url}")
+                print(f"Added to active sources: {url}", "Active sources:", self.active_sources)
 
         for cls in list(self.count_in_a_row.keys()):
             if cls not in detected_classes:
@@ -229,10 +234,11 @@ class UI:
                         continue
 
                     if url in self.active_sources:
-                        self.active_sources.remove(url)
                         self.spotify_manager.remove_item_from_active_sources(url)
-                        print(f"Removed from active sources: {url}")
-
+                        self.active_sources.remove(url)
+                        print(f"Removed from active sources: {url}", "Active sources:", self.active_sources)
+                    else:
+                        print(f"Class {cls} not in active sources, skipping...")
     def process_frame(self, frame):
         """
         Process a single video frame and display predictions.
