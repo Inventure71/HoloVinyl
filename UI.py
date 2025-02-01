@@ -1,7 +1,6 @@
+import json
 import os
-import random
 import threading
-import time
 
 import cv2
 import numpy as np
@@ -17,6 +16,45 @@ from utils.music.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
 from utils.music.use_ollama import get_song_from_image
 
+from test import DigitalButtonEditor
+
+def load_buttons_to_setup(self):
+    """Load the digital buttons from the save file (if it exists) and scale them to display coordinates."""
+    if os.path.exists("digital_buttons.json"):
+        CALLBACK_MAPPING = {
+            "button_clicked": button_clicked,
+        }
+        with open("digital_buttons.json", "r") as f:
+            data = json.load(f)
+        self.draw_buttons = []
+        for item in data:
+            callback_id = item.get("callback_id", "button_clicked")
+            callback_param = item.get("callback_param", 0)
+            print(f"Loaded button with callback ID: {callback_id}, param: {callback_param}")
+            btn = Button(
+                x=item.get("x", 0),
+                y=item.get("y", 0),
+                width=item.get("width", 100),
+                height=item.get("height", 100),  # FIXED: use "height" instead of "width"
+                text=item.get("text", "Digital Button"),
+                font=self.font,
+                text_color=tuple(item.get("text_color", [255, 255, 255])),
+                button_color=tuple(item.get("button_color", [0, 128, 255])),
+                hover_color=tuple(item.get("hover_color", [0, 102, 204])),
+                callback=lambda param=callback_param, cid=callback_id: CALLBACK_MAPPING[cid](param),
+                border_radius=item.get("border_radius", 15)
+            )
+            print("Loaded button at position", btn.rect)
+            # Store callback info for later saving.
+            btn.callback_id = callback_id
+            btn.callback_param = callback_param
+            self.draw_buttons.append(btn)
+    else:
+        self.draw_buttons = []
+
+
+def button_clicked(n):
+    print(f"Button {n} clicked 123012039321")
 
 class UI:
     def __init__(self, camera, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
@@ -125,19 +163,7 @@ class UI:
 
         self.hand_tracking_manager = HandTrackingManager(callback_function=self.user_pinched)
         self.radius_of_click = 50
-        self.draw_buttons = [
-            Button(
-                x=1807,
-                y=959,
-                width=200,
-                height=50,
-                text="Example Button",
-                font=self.font,
-                text_color=(255, 255, 255),
-                button_color=(0, 128, 255),
-                hover_color=(0, 102, 204),
-                callback=lambda: button_clicked_start_prediction(),
-            )]
+        #self.draw_buttons = load_buttons()
 
         """MUSIC RELATED"""
         self.mappings = load_mappings()  # TODO update mappings once submenu is closed
@@ -153,17 +179,21 @@ class UI:
                                                  daemon=True)  # `daemon=True` allows the thread to exit when the main program exits
             self.music_thread.start()
 
+
+
+        """HAND TRACKING"""
+        self.digital_button_ui = None
+        self.draw_buttons = []
+        self.selecting_buttons_UI_active = True
+
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
-
-        # check if mouse is clicking one of user added buttons
-        # find if point is in circle
         for button in self.draw_buttons:
-            button.rect.collidepoint(mouse_position)
-            #if (mouse_position[0] - button.rect.x) ** 2 + (mouse_position[1] - button.rect.y) ** 2 <= self.radius_of_click ** 2:
-            print(f"Called button {button.text}")
-            button.callback()
-            return True
+            # Only call this button's callback if the pinch is within its rectangle.
+            if button.rect.collidepoint(mouse_position):
+                print(f"Called button {button.text}")
+                button.callback()
+                return True
 
         """
                 # When processing clicks:
@@ -277,74 +307,86 @@ class UI:
 
     def run(self):
         frame_timestamp_ms = 0
+        ret, frame = self.webcam.read()
+
         while self.running:
-            self.screen.fill((0,0,0))
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
+            if self.selecting_buttons_UI_active:
+
+                if self.digital_button_ui is None:
+                    self.digital_button_ui = DigitalButtonEditor(background_frame=frame, max_display_dimension=640)
+
+                else:
+                    self.selecting_buttons_UI_active = self.digital_button_ui.run(self.screen)
+
+
+            else:
+                self.screen.fill((0,0,0))
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        self.running = False
+
+                    if self.submenu.active:
+                        self.submenu.handle_event(event)
+
+                    else:
+                        for button in self.buttons:
+                            button.handle_event(event)
+
+                        if self.adding_class != "":
+                            self.button_to_take_picture.handle_event(event)
+
+                        self.text_field.handle_event(event)
+
+                ret, frame = self.webcam.read()
+
+                # TODO: check if i can just crop frame_temp to 600*600 instead of running warp and crop
+
+                # new version
+                frame_temp = self.marker_handler.warp_and_adjust(frame, corners=self.calibration_points)
+                self.hand_tracking_manager.analyze_frame(frame_temp, frame_timestamp_ms)
+                frame_timestamp_ms += 1
+
+                frame = self.marker_handler.warp_and_crop_board(frame, corners=self.calibration_points, is_for_frame=True)
+                #frame = transform_to_square(frame, self.calibration_points)
+
+
+                self.frame = frame
+                #frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
+
+                if self.adding_class != "":
+                    class_name = self.text_field.text
+                    print(f"Adding class: {class_name}")
+                    directory = f"custom_models/raw_images/{class_name}"
+                    os.makedirs(directory, exist_ok=True)
+
+                    self.display_frame(frame)
+
+                    self.button_to_take_picture.draw(self.screen)
+                    self.screen.blit(self.font.render(f"Remaining photos: {self.remaining_photo_count}", True, (255, 255, 255)), (200, 400))
+
+                elif self.predicting:
+                    self.screen.blit(self.font.render("Predicting...", True, (255, 255, 255)), (200, 400))
+
+                    self.process_frame(frame, frame_timestamp_ms)
+
+                else:
+                    self.display_frame(frame)
 
                 if self.submenu.active:
-                    self.submenu.handle_event(event)
+                    self.submenu.draw()
 
                 else:
                     for button in self.buttons:
-                        button.handle_event(event)
+                        button.draw(self.screen)
 
-                    if self.adding_class != "":
-                        self.button_to_take_picture.handle_event(event)
+                    for button in self.draw_buttons:
+                        button.draw(self.screen)
 
-                    self.text_field.handle_event(event)
+                    # Update the text field
+                    self.text_field.update()
 
-            ret, frame = self.webcam.read()
-
-            # TODO: check if i can just crop frame_temp to 600*600 instead of running warp and crop
-
-            # new version
-            frame_temp = self.marker_handler.warp_and_adjust(frame, corners=self.calibration_points)
-            self.hand_tracking_manager.analyze_frame(frame_temp, frame_timestamp_ms)
-            frame_timestamp_ms += 1
-
-            frame = self.marker_handler.warp_and_crop_board(frame, corners=self.calibration_points, is_for_frame=True)
-            #frame = transform_to_square(frame, self.calibration_points)
-
-
-            self.frame = frame
-            #frame = cv2.resize(frame, (600, frame.shape[0] * 600 // frame.shape[1]))
-
-            if self.adding_class != "":
-                class_name = self.text_field.text
-                print(f"Adding class: {class_name}")
-                directory = f"custom_models/raw_images/{class_name}"
-                os.makedirs(directory, exist_ok=True)
-
-                self.display_frame(frame)
-
-                self.button_to_take_picture.draw(self.screen)
-                self.screen.blit(self.font.render(f"Remaining photos: {self.remaining_photo_count}", True, (255, 255, 255)), (200, 400))
-
-            elif self.predicting:
-                self.screen.blit(self.font.render("Predicting...", True, (255, 255, 255)), (200, 400))
-
-                self.process_frame(frame, frame_timestamp_ms)
-
-            else:
-                self.display_frame(frame)
-
-            if self.submenu.active:
-                self.submenu.draw()
-
-            else:
-                for button in self.buttons:
-                    button.draw(self.screen)
-
-                for button in self.draw_buttons:
-                    button.draw(self.screen)
-
-                # Update the text field
-                self.text_field.update()
-
-                # Draw the text field
-                self.text_field.draw(self.screen)
+                    # Draw the text field
+                    self.text_field.draw(self.screen)
 
             self.clock.tick(30)
             pygame.display.flip()
