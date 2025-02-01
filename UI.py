@@ -16,10 +16,9 @@ from utils.music.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
 from utils.music.use_ollama import get_song_from_image
 
-from test import DigitalButtonEditor
+from addButtonUI import DigitalButtonEditor
 
-def button_clicked(n):
-    print(f"Button {n} clicked 123012039321")
+
 
 class UI:
     def __init__(self, camera, points, enable_spotify, button_clicked_start_prediction, button_clicked_add_class, button_clicked_train_model, button_clicked_open_submenu, button_clicked_quit, button_clicked_take_photo):
@@ -149,6 +148,9 @@ class UI:
         self.draw_buttons = []
         self.selecting_buttons_UI_active = False
 
+    def button_clicked(self, n):
+        print(f"Button {n} clicked - INSIDE CLASS")
+
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
         for button in self.draw_buttons:
@@ -274,13 +276,13 @@ class UI:
 
         # Load the digital button UI
         if self.digital_button_ui is None:
-            self.digital_button_ui = DigitalButtonEditor(background_frame=frame)
+            self.digital_button_ui = DigitalButtonEditor(background_frame=frame, callback=self.button_clicked)
             self.draw_buttons = self.digital_button_ui.buttons
 
         while self.running:
             if self.selecting_buttons_UI_active:
                 if self.digital_button_ui is None:
-                    self.digital_button_ui = DigitalButtonEditor(background_frame=frame) #, max_display_dimension=1024
+                    self.digital_button_ui = DigitalButtonEditor(background_frame=frame, callback=self.button_clicked)
 
                 self.selecting_buttons_UI_active, self.draw_buttons = self.digital_button_ui.run(self.screen, self.clock)
 
