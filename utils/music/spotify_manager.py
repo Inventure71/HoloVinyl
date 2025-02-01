@@ -333,6 +333,16 @@ class Spotify_Manager:
                         time.sleep(0.5)
                         self.time_to_wait -= 0.5
 
+    """MUSIC MANAGEMENT"""
+    def play_pause(self):
+        playback = self.spotify_client.current_playback()
+        if playback:
+            if playback["is_playing"]:
+                self.spotify_client.pause_playback()
+            else:
+                self.spotify_client.start_playback()
+        else:
+            print("No active playback found.")
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()

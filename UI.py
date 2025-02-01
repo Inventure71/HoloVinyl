@@ -150,6 +150,8 @@ class UI:
 
     def button_clicked(self, n):
         print(f"Button {n} clicked - INSIDE CLASS")
+        if n == 0:
+            self.spotify_manager.play_pause()
 
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
