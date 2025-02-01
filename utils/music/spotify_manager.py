@@ -311,9 +311,40 @@ class Spotify_Manager:
         start_time = time.time()
         self.one_time_check = True
         while self.running:
+
+            """
+            CASES WHERE IT SHOULD BE PLAYING NEXT SONG:
+            
+            IF NO CHANGES IN ACTIVE SOURCES:
+            1) Song was started and finished without any change in active sources 
+            - In this case the check should be performed exactly when the song ends (0.5 seconds before transition in new one)
+            
+            IF CHANGES IN ACTIVE SOURCES:
+            
+            1) SOURCE WAS ADDED
+                Check if already playing a song (with the class not with the spotify API)
+                1) Never started playing a song (from the script)
+                    - Start playing a song
+                2) Already playing a song
+                    - Do nothing
+                
+            
+            2) SOURCE WAS REMOVED
+                Remove the songs of this source from the already played tracks
+                1) Current played song was originally from that source
+                    - check if there are any other sources to play from
+                        - YES: play next song
+                        - NO: pause playback and reset all variables
+                2) Current played song was not from that source
+                    - Do nothing
+        
+
+            """
+
             if not self.is_authenticated:
                 print("Not authenticated")
                 time.sleep(2)
+
 
             # Case when the song is interrupted
             elif self.current_song is None:
@@ -337,10 +368,6 @@ class Spotify_Manager:
                         print("No song, playing next song...")
                         info = self.play_next_song()
                         start_time = time.time()
-
-
-
-
 
                 if self.time_to_wait < 1:
                     time.sleep(max(self.time_to_wait, 0))
