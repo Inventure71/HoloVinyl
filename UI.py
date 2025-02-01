@@ -275,9 +275,7 @@ class UI:
         # Load the digital button UI
         if self.digital_button_ui is None:
             self.digital_button_ui = DigitalButtonEditor(background_frame=frame)
-            self.draw_buttons = self.digital_button_ui.load_buttons()
-            self.digital_button_ui.load_buttons()
-
+            self.draw_buttons = self.digital_button_ui.buttons
 
         while self.running:
             if self.selecting_buttons_UI_active:
