@@ -282,21 +282,30 @@ class Spotify_Manager:
 
     """QUEUE MANAGEMENT"""
     def play_next_song(self):
-        self.searching = True
+        if len(self.active_sources) == 0:
+            print("No active sources to play from.")
+            self.searching = False
+            self.current_song = None
+            self.time_to_wait = 0
+            return None
 
-        # RESET JUST TO BE SURE
-        self.current_song = None
-        self.time_to_wait = 0
+        else:
+            self.searching = True
 
-        source = random.choice(self.active_sources)
-        track = self.get_random_not_already_played_song_in_playlist(source)
-        self.already_played_tracks.setdefault(source, []).append(track)
+            # RESET JUST TO BE SURE
+            self.current_song = None
+            self.time_to_wait = 0
 
-        info = self.play_playlist_or_album(track)
-        self.time_to_wait = info.duration // 1000
+            source = random.choice(self.active_sources)
+            track = self.get_random_not_already_played_song_in_playlist(source)
+            self.already_played_tracks.setdefault(source, []).append(track)
 
-        self.searching = False
-        return info
+            info = self.play_playlist_or_album(track)
+            self.time_to_wait = info.duration // 1000
+            print(f"Playing next song: {info.title} by {info.artist}, will wait for {self.time_to_wait} seconds")
+
+            self.searching = False
+            return info
 
     def handle_music(self):
         start_time = time.time()
@@ -306,24 +315,30 @@ class Spotify_Manager:
                 print("Not authenticated")
                 time.sleep(2)
 
+            # Case when the song is interrupted
+            elif self.current_song is None:
+                print("No current song, playing next one...")
+                info = self.play_next_song()
+
+
             elif len(self.active_sources) > 0 and not self.searching:
                 self.one_time_check = True
 
-                if self.current_song is None:
-                    print("No current song, playing next one...")
-                    info = self.play_next_song()
+                # Case when the song is finished without interruption
+                if self.time_to_wait + 0.1 <= 0.0:
+                    # Check if playback has actually stopped or the song is finished
+                    if not self.spotify_client.current_playback().get('is_playing', False):
+                        print("Playback stopped, playing next song...")
+                        info = self.play_next_song()
 
+                # Case when the song is still playing and checks every 30 seconds
                 if start_time + 30 < time.time():
                     if not self.spotify_client.current_playback().get('is_playing', False):
                         print("No song, playing next song...")
                         info = self.play_next_song()
                         start_time = time.time()
 
-                if self.time_to_wait + 0.1 <= 0.0:
-                    # Check if playback has actually stopped or the song is finished
-                    if not self.spotify_client.current_playback().get('is_playing', False):
-                        print("Playback stopped, playing next song...")
-                        info = self.play_next_song()
+
 
 
 
