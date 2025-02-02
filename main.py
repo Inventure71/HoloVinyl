@@ -15,6 +15,7 @@ from utils.string_processing import unsanitize_string, sanitize_string
 # TODO: use local web interface if I want to set it up on raspberryPi pi
 # TODO: in automatic calibration, make the functions more efficient by calculating once the various variables that don't change (almost all of them)
 # TODO: add that the hand tracking is always working but not at all frames
+# TODO: major bug in the music player, the token can expire and it doesn't refresh
 
 """BUTTONS START"""
 def button_clicked_start_prediction():
