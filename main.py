@@ -100,7 +100,7 @@ def button_clicked_open_submenu():
 if __name__ == "__main__":
     pygame.init()
 
-    enable_spotify = False
+    enable_spotify = True
     automatic_calibration = False
     load_last_calibration = True
 

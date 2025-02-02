@@ -1,19 +1,24 @@
+import time
+
 import cv2
 import ollama
 import re
 
 
-def get_song_from_image(frame):
+def get_song_from_image(frame=None):
     try:
-        path = "image.pngcustom_models/photo_of_object.png"
+        path = "custom_models/photo_of_object.png"
 
-        if frame:
+        print("Getting song from image")
+        if frame is not None:
             cv2.imwrite(path, frame)
+            time.sleep(0.1)
 
+        print("Image saved")
         messages = [
             {
                 'role': 'user',
-                'content': 'Describe the main object in this picture in detail',
+                'content': 'Describe the main object in this picture in detail, the image contains at least an object on white background.',
                 'images': [path]
             }
         ]
@@ -23,19 +28,29 @@ def get_song_from_image(frame):
             model='moondream:1.8b',
             messages=messages,
         )
-        #print(response.message.content)
+        print("Image description", response.message.content)
 
-        messages.append({
-            'role': 'assistant',
-            'content': response.message.content
-        })
+        #messages.append({
+        #    'role': 'assistant',
+        #    'content': response.message.content
+        #})
 
-        messages.append({
-            'role': 'user',
-            'content': "Extract mood, theme, and keywords from the image description for finding a song.\n"
-                       "The output should just be a list of Mood, themes and keywords with no explanation for any of them, all in a line, no indentation"
-            # 'Describe it in 3 words',
-        })
+        messages = [
+            {
+                'role': 'user',
+                'content': "Analyze the described object to identify: \n"
+                           "1. Primary activity associated with the object\n"
+                           "2. Core theme it represents\n"
+                           "3. Matching music genre/situation\n\n"
+                           "Consider cultural associations and usage context. Examples:\n"
+                           "- Pen → Studying, Focus, Instrumental/Classical\n"
+                           "- Pizza → Cooking, Celebration, Upbeat Italian\n"
+                           "- Running shoes → Exercise, Energy, Pump-up Playlist\n\n"
+                           "Respond ONLY with 3 comma-separated values in this format:"
+                           "Activity, Theme, Genre. No explanations.\n"
+                           f"{response.message.content}",
+            }
+        ]
 
         ollama.pull('deepseek-r1:1.5b')  # deepseek-r1:1.5b or qwen2.5:0.5b
         response = ollama.chat(
@@ -54,6 +69,7 @@ def get_song_from_image(frame):
         print(cleaned_text)
         return cleaned_text
     except Exception as e:
+        print("Error in get_song_from_image")
         print(f"Error: {e}")
         return None
 

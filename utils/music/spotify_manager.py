@@ -2,8 +2,12 @@ import os
 import json
 import random
 import time
+
+import cv2
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+from utils.music.use_ollama import get_song_from_image
+
 
 class Song:
     def __init__(self, url, duration, title, artist, album, cover_url, original_url, source=None):
@@ -53,6 +57,7 @@ class Spotify_Manager:
         self.last_url = ""
         self.currently_playing_url = ""
 
+        self.device_id = None
         self.is_authenticated = False
         self.spotify_client = self.authenticate_user()
         self.is_authenticated = True
@@ -122,6 +127,52 @@ class Spotify_Manager:
                 return spotipy.Spotify(auth=token_info["access_token"])
 
     """ PLAYLIST/ALBUM PLAYBACK """
+    def find_device(self):
+        try:
+            devices = self.spotify_client.devices()
+            if not devices["devices"]:
+                print("No active devices found. Please start Spotify on a device first.")
+                return False
+            # Using the first available device (adjust as needed)
+            self.device_id = devices["devices"][0]["id"]
+            return self.device_id
+        except spotipy.exceptions.SpotifyException as e:
+            print(f"Error finding device: {e}")
+            return False
+
+    def find_song_based_on_image(self, frame):
+        query = get_song_from_image(frame=frame)
+        if query:
+            self.searching = True
+            results = self.spotify_client.search(q=query, type='track', limit=5)
+            tracks = results.get('tracks', {}).get('items', [])
+
+            if not tracks:
+                print(f"No tracks found for query: {query} ⚠️⛔⚠️⛔⚠️⛔")
+                self.searching = False
+                return None
+
+            # Randomly select one track from the search results
+            random_track = random.choice(tracks)
+            track_uri = random_track.get('uri')
+
+            if not self.device_id:
+                self.find_device()
+
+            try:
+                self.spotify_client.start_playback(
+                    device_id=self.device_id,
+                    uris=[track_uri]
+                )
+            except spotipy.exceptions.SpotifyException as e:
+                print(f"Error starting playback: {e}")
+                return False
+
+            self.searching = False
+            return True
+        else:
+            print("No query found from image description. ⚠️⛔️⚠️⛔⚠️⛔") # emojy so i can i see it in the terminal
+            return False
 
     def get_source_type(self, url):
         if "playlist" in url:
@@ -161,22 +212,18 @@ class Spotify_Manager:
         try:
             context_type = self.get_source_type(url)
             context_id = url.split("/")[-1].split("?")[0]
-            devices = self.spotify_client.devices()
-            if not devices["devices"]:
-                print("No active devices found. Please start Spotify on a device first.")
-                return
-            # Using the first available device (adjust as needed)
-            device_id = devices["devices"][0]["id"]
+            if not self.device_id:
+                self.find_device()
 
             if context_type in ["playlist", "album"]:
                 self.spotify_client.start_playback(
-                    device_id=device_id,
+                    device_id=self.device_id,
                     context_uri=f"spotify:{context_type}:{context_id}"
                 )
                 print(f"Started playing {context_type}: {url}")
             elif context_type == "track":
                 self.spotify_client.start_playback(
-                    device_id=device_id,
+                    device_id=self.device_id,
                     uris=[f"spotify:{context_type}:{context_id}"]
                 )
                 print(f"Started playing track: {url}")
@@ -317,7 +364,7 @@ class Spotify_Manager:
                     if playback and playback.get('is_playing', False):
                         self.spotify_client.pause_playback()
                     self.should_check = False
-                print("No active sources, waiting...")
+                #print("No active sources, waiting...")
                 self.current_song = None
                 self.time_to_wait = 0
                 time.sleep(0.1)

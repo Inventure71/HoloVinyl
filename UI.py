@@ -14,7 +14,6 @@ from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
 from utils.music.spotify_manager import Spotify_Manager
 from utils.yolo_handler import YOLOHandler
-from utils.music.use_ollama import get_song_from_image
 
 from addButtonUI import DigitalButtonEditor
 
@@ -147,12 +146,15 @@ class UI:
         """HAND TRACKING"""
         self.digital_button_ui = None
         self.draw_buttons = []
-        self.selecting_buttons_UI_active = False
+        self.selecting_buttons_UI_active = True
 
     def button_clicked(self, n):
         print(f"Button {n} clicked - INSIDE CLASS")
         if n == 0 and self.enable_spotify:
             self.spotify_manager.play_pause()
+        if n == 1 and self.enable_spotify:
+            self.spotify_manager.find_song_based_on_image(self.frame)
+
 
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
