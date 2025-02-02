@@ -41,11 +41,13 @@ class Spotify_Manager:
         self.SCOPE = "user-read-playback-state user-modify-playback-state playlist-read-private"
 
         # Playback management data
+        self.paused = False
         self.searching = False  # Flag to indicate a transition is in progress
         self.already_played_tracks = {}  # {active_source: [track URLs played]}
         self.active_sources = []         # List of active source URLs (or identifiers)
         self.current_song = None         # The Song object currently playing
         self.time_to_wait = 0            # Remaining time (in seconds) for the current song
+        self.should_check = True
 
         # Internal URL tracking
         self.last_url = ""
@@ -60,6 +62,7 @@ class Spotify_Manager:
     def remove_item_from_active_sources(self, item):
         print("Removing item from active sources in Spotify_Manager")
         try:
+            self.should_check = True
             self.active_sources.remove(item)
             if item in self.already_played_tracks:
                 del self.already_played_tracks[item]
@@ -103,33 +106,20 @@ class Spotify_Manager:
         print("Authenticating user...")
         if os.path.exists(self.TOKEN_FILE):
             with open(self.TOKEN_FILE, "r") as file:
-                print("Token file found.")
                 token_info = json.load(file)
-                if not spotipy.SpotifyOAuth.is_token_expired(token_info):
-                    return spotipy.Spotify(auth=token_info["access_token"])
-                else:
-                    sp_oauth = SpotifyOAuth(
-                        client_id=self.CLIENT_ID,
-                        client_secret=self.CLIENT_SECRET,
-                        redirect_uri=self.REDIRECT_URI,
-                        scope=self.SCOPE
-                    )
+                # Create SpotifyOAuth instance
+                sp_oauth = SpotifyOAuth(
+                    client_id=self.CLIENT_ID,
+                    client_secret=self.CLIENT_SECRET,
+                    redirect_uri=self.REDIRECT_URI,
+                    scope=self.SCOPE
+                )
+                if sp_oauth.is_token_expired(token_info):  # Use instance method
                     token_info = sp_oauth.refresh_access_token(token_info["refresh_token"])
-                    with open(self.TOKEN_FILE, "w") as file:
-                        json.dump(token_info, file)
-                    return spotipy.Spotify(auth=token_info["access_token"])
 
-        sp_oauth = SpotifyOAuth(
-            client_id=self.CLIENT_ID,
-            client_secret=self.CLIENT_SECRET,
-            redirect_uri=self.REDIRECT_URI,
-            scope=self.SCOPE
-        )
-        token_info = sp_oauth.get_access_token()
-        with open(self.TOKEN_FILE, "w") as file:
-            json.dump(token_info, file)
-        print("User authenticated.")
-        return spotipy.Spotify(auth=token_info["access_token"])
+                with open(self.TOKEN_FILE, "w") as file:
+                    json.dump(token_info, file)
+                return spotipy.Spotify(auth=token_info["access_token"])
 
     """ PLAYLIST/ALBUM PLAYBACK """
 
@@ -254,6 +244,23 @@ class Spotify_Manager:
                     print("Already played this song; skipping.")
                     tracks.remove(track_item)
 
+    """MUSIC MANAGEMENT"""
+
+    def play_pause(self):
+        playback = self.spotify_client.current_playback()
+        if playback:
+            if playback["is_playing"]:
+                self.spotify_client.pause_playback()
+                self.paused = True
+                return True
+            else:
+                self.spotify_client.start_playback()
+        else:
+            print("No active playback found.")
+
+        self.paused = False
+        return False
+
     """ QUEUE MANAGEMENT """
 
     def play_next_song(self):
@@ -305,44 +312,55 @@ class Spotify_Manager:
 
             # If no active sources, pause playback.
             if len(self.active_sources) == 0:
-                playback = self.spotify_client.current_playback()
-                if playback and playback.get('is_playing', False):
-                    self.spotify_client.pause_playback()
+                if self.should_check:
+                    playback = self.spotify_client.current_playback()
+                    if playback and playback.get('is_playing', False):
+                        self.spotify_client.pause_playback()
+                    self.should_check = False
                 print("No active sources, waiting...")
                 self.current_song = None
                 self.time_to_wait = 0
                 time.sleep(0.1)
                 continue
 
-            # Only trigger play_next_song if not already transitioning.
-            if self.current_song is None and not self.searching:
-                print("No current song, playing next one...")
-                self.play_next_song()
+            if self.paused:
+                print("Paused, waiting...")
+                time.sleep(0.1)
+                continue
+
             else:
-                playback = self.spotify_client.current_playback()
-                if playback and (not playback.get('is_playing', False) and not self.searching):
-                    print("Playback stopped unexpectedly, starting next song...")
+                # Only trigger play_next_song if not already transitioning.
+                if self.current_song is None and not self.searching:
+                    print("No current song, playing next one...")
                     self.play_next_song()
                 else:
-                    if self.time_to_wait <= 0.5 and not self.searching:
-                        time.sleep(self.time_to_wait)
-                        self.time_to_wait = 0
-                        print("Song nearly finished. Transitioning to next song...")
+                    playback = self.spotify_client.current_playback()
+                    if playback and (not playback.get('is_playing', False) and not self.searching):
+                        print("Playback stopped unexpectedly, starting next song...")
                         self.play_next_song()
                     else:
-                        time.sleep(0.5)
-                        self.time_to_wait -= 0.5
+                        if self.time_to_wait <= 0.5 and not self.searching:
+                            time.sleep(self.time_to_wait)
+                            self.time_to_wait = 0
+                            # Check if current song is the same that is playing
+                            playback = self.spotify_client.current_playback()
+                            if playback and playback.get('item', {}).get('external_urls', {}).get('spotify') == self.currently_playing_url and playback.get('is_playing', False):
+                                print("Song finished. Starting next song...")
+                                self.play_next_song()
 
-    """MUSIC MANAGEMENT"""
-    def play_pause(self):
-        playback = self.spotify_client.current_playback()
-        if playback:
-            if playback["is_playing"]:
-                self.spotify_client.pause_playback()
-            else:
-                self.spotify_client.start_playback()
-        else:
-            print("No active playback found.")
+                            elif playback and playback.get('item', {}).get('external_urls', {}).get('spotify') == self.currently_playing_url:
+                                print("Song still going on, adjusting time to wait...")
+                                self.time_to_wait = playback.get('item', {}).get('duration_ms', 0) // 1000 - playback.get('progress_ms', 0) // 1000
+
+                            else:
+                                print("Different song is playing. Overtaking playback...")
+                                self.play_next_song()
+
+                        else:
+                            time.sleep(0.5)
+                            self.time_to_wait -= 0.5
+
+
 
 if __name__ == "__main__":
     spotify = Spotify_Manager()

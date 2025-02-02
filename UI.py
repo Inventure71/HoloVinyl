@@ -129,6 +129,7 @@ class UI:
         self.radius_of_click = 50
 
         """MUSIC RELATED"""
+        self.paused = False
         self.mappings = load_mappings()  # TODO update mappings once submenu is closed
         self.active_sources = []
         self.class_frame_count = {}  # Tracks consecutive frames for each class
