@@ -9,6 +9,7 @@ import pygame
 from HandTracking import HandTrackingManager
 from utils.calibration.automatic_calibration_w_ar_markers import ArMarkerHandler
 from utils.generic import load_mappings
+from utils.music.sounds_utils import play_sound
 from utils.pygame_utils.Button import Button
 from utils.pygame_utils.TextField import TextField
 from submenu_UI import Submenu
@@ -146,13 +147,15 @@ class UI:
         """HAND TRACKING"""
         self.digital_button_ui = None
         self.draw_buttons = []
-        self.selecting_buttons_UI_active = True
+        self.selecting_buttons_UI_active = False
 
     def button_clicked(self, n):
         print(f"Button {n} clicked - INSIDE CLASS")
         if n == 0 and self.enable_spotify:
+            play_sound()
             self.spotify_manager.play_pause()
         if n == 1 and self.enable_spotify:
+            play_sound()
             self.spotify_manager.find_song_based_on_image(self.frame)
 
 

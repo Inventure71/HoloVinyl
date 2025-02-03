@@ -142,6 +142,7 @@ class Spotify_Manager:
 
     def find_song_based_on_image(self, frame):
         query = get_song_from_image(frame=frame)
+        print(f"Query found from image description: {query}")
         if query:
             self.searching = True
             results = self.spotify_client.search(q=query, type='track', limit=5)
@@ -154,19 +155,13 @@ class Spotify_Manager:
 
             # Randomly select one track from the search results
             random_track = random.choice(tracks)
-            track_uri = random_track.get('uri')
+            external_urls = random_track.get('external_urls', {})
+            track_url = external_urls.get('spotify')
 
             if not self.device_id:
                 self.find_device()
 
-            try:
-                self.spotify_client.start_playback(
-                    device_id=self.device_id,
-                    uris=[track_uri]
-                )
-            except spotipy.exceptions.SpotifyException as e:
-                print(f"Error starting playback: {e}")
-                return False
+            self.play_playlist_or_album(track_url)
 
             self.searching = False
             return True
