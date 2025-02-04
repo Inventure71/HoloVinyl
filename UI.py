@@ -147,7 +147,7 @@ class UI:
         """HAND TRACKING"""
         self.digital_button_ui = None
         self.draw_buttons = []
-        self.selecting_buttons_UI_active = False
+        self.selecting_buttons_UI_active = True
 
     def button_clicked(self, n):
         print(f"Button {n} clicked - INSIDE CLASS")

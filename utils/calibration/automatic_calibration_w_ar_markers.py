@@ -14,7 +14,11 @@ class ArMarkerHandler:
         self.matrix_wa = None
         self.matrix_wc = None
 
-        self.warped_corners = None
+        # Cached transformation parameters
+        self.last_corners = None
+        self.matrix_wc = None
+        self.original_size_wc = None
+        self.warped_corners = None  # Corners in the warped image space
 
     def create_board(self, output_path="custom_models/board.png", margin=50):
         """Creates an A4-sized board with four ArUco markers forming a perfect square,
