@@ -46,7 +46,7 @@ class UI:
         # init font
         self.font = pygame.font.Font(None, 32)
 
-        # list of 4 buttons
+        # list of buttons
         self.buttons = [
             Button(
                 x=600-50, #
@@ -88,6 +88,30 @@ class UI:
                 x=1024 - 200, y=160, width=200, height=50, text="Class Mappings", font=self.font,
                 text_color=(255, 255, 255), button_color=(0, 128, 255), hover_color=(0, 102, 204),
                 callback=button_clicked_open_submenu),
+            Button(
+                x=600-100,
+                y=0,
+                width=50,
+                height=50,
+                text="RC",
+                font=self.font,
+                text_color=(255, 255, 255),
+                button_color=(0, 128, 255),
+                hover_color=(0, 102, 204),
+                callback=self.button_clicked_refresh_calibration,
+            ),
+            Button(
+                x=1024 - 250,
+                y=320,
+                width=250,
+                height=50,
+                text="Change Digital Buttons",
+                font=self.font,
+                text_color=(255, 255, 255),
+                button_color=(0, 128, 255),
+                hover_color=(0, 102, 204),
+                callback=self.button_clicked_change_digital_buttons,
+            ),
             Button(
                 x=1024-200,
                 y=550,
@@ -147,7 +171,7 @@ class UI:
         """HAND TRACKING"""
         self.digital_button_ui = None
         self.draw_buttons = []
-        self.selecting_buttons_UI_active = True
+        self.selecting_buttons_UI_active = False
 
     def button_clicked(self, n):
         print(f"Button {n} clicked - INSIDE CLASS")
@@ -160,7 +184,6 @@ class UI:
         if n == 2 and self.enable_spotify:
             play_sound()
             self.spotify_manager.current_song = None # This should skip song
-
 
     def user_pinched(self, mouse_position):
         print("mouse clicked", mouse_position)
@@ -185,17 +208,33 @@ class UI:
         #self.hand_tracking_manager.is_pinching
 
     def calibrate_board(self, frame):
+
+        backup_points = self.calibration_points
+
         if self.calibration_active:
             self.calibration_points = self.marker_handler.detect_corners(frame, use_webcam=True)
             if self.calibration_points is not None:
                 print("Calibration successful!")
                 return
-            print("Calibration failed!")
+            print("Calibration failed, rolling back to previous points")
+            self.calibration_points = backup_points
+            return
 
         print("Calibration not active!")
         # Convert corners list to a NumPy array
         self.calibration_points = np.array([(0, 0), (640, 0), (640, 640), (0, 640)], dtype=np.float32)
         return
+
+    def button_clicked_refresh_calibration(self):
+        """Callback to refresh the calibration using the current frame."""
+        ret, frame = self.webcam.read()
+
+        self.calibrate_board(frame)
+
+    def button_clicked_change_digital_buttons(self):
+        """Callback to reset the digital button UI for reconfiguration."""
+        self.digital_button_ui = None
+        self.selecting_buttons_UI_active = True
 
     def reload_YOLO_model(self, custom = True):
         if custom:
