@@ -157,6 +157,9 @@ class UI:
         if n == 1 and self.enable_spotify:
             play_sound()
             self.spotify_manager.find_song_based_on_image(self.frame)
+        if n == 2 and self.enable_spotify:
+            play_sound()
+            self.spotify_manager.current_song = None # This should skip song
 
 
     def user_pinched(self, mouse_position):
