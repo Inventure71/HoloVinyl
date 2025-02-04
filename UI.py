@@ -233,7 +233,10 @@ class UI:
 
     def button_clicked_change_digital_buttons(self):
         """Callback to reset the digital button UI for reconfiguration."""
-        self.digital_button_ui = None
+        #self.digital_button_ui = None
+        ret, frame = self.webcam.read()
+
+        self.digital_button_ui = DigitalButtonEditor(background_frame=frame, callback=self.button_clicked)
         self.selecting_buttons_UI_active = True
 
     def reload_YOLO_model(self, custom = True):
@@ -331,7 +334,7 @@ class UI:
 
         while self.running:
             if self.selecting_buttons_UI_active:
-                if self.digital_button_ui is None:
+                if self.digital_button_ui is None: # THIS IS PROBABLY USELESS
                     self.digital_button_ui = DigitalButtonEditor(background_frame=frame, callback=self.button_clicked)
 
                 self.selecting_buttons_UI_active, self.draw_buttons = self.digital_button_ui.run(self.screen, self.clock)

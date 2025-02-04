@@ -124,6 +124,9 @@ class DigitalButtonEditor:
             y_offset += text_surf.get_height() + 5
 
     def run(self, screen, clock):
+
+        screen.fill((0, 0, 0))
+
         # Get current screen dimensions
         screen_width, screen_height = screen.get_size()
 
