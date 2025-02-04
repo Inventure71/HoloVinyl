@@ -147,7 +147,7 @@ class UI:
         """HAND TRACKING"""
         self.digital_button_ui = None
         self.draw_buttons = []
-        self.selecting_buttons_UI_active = False
+        self.selecting_buttons_UI_active = True
 
     def button_clicked(self, n):
         print(f"Button {n} clicked - INSIDE CLASS")
@@ -157,6 +157,9 @@ class UI:
         if n == 1 and self.enable_spotify:
             play_sound()
             self.spotify_manager.find_song_based_on_image(self.frame)
+        if n == 2 and self.enable_spotify:
+            play_sound()
+            self.spotify_manager.current_song = None # This should skip song
 
 
     def user_pinched(self, mouse_position):
