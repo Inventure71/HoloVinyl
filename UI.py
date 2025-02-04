@@ -102,7 +102,7 @@ class UI:
             ),
             Button(
                 x=1024 - 250,
-                y=320,
+                y=470,
                 width=250,
                 height=50,
                 text="Change Digital Buttons",
